@@ -59,7 +59,9 @@ export default async function MenuPage() {
                 Combo Deal
               </span>
               <div className="mt-4 flex items-center gap-4">
-                <DishPhoto emoji={combo.emoji} imageUrl={combo.imageUrl} label={combo.name} />
+                <div className="shrink-0 w-20 sm:w-24">
+                  <DishPhoto emoji={combo.emoji} imageUrl={combo.imageUrl} label={combo.name} />
+                </div>
                 <div>
                   <p className="font-display text-lg font-semibold leading-tight text-forest">
                     {combo.name}
