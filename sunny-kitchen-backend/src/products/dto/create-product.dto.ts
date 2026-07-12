@@ -40,4 +40,8 @@ export class CreateProductDto {
   @IsOptional()
   @IsNumber()
   sortOrder?: number;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

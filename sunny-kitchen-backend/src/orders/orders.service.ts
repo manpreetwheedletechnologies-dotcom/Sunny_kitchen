@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Order, OrderDocument, OrderStatus } from "./schemas/order.schema";
+import { Order, OrderDocument, OrderStatus, OrderSource } from "./schemas/order.schema";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ProductsService } from "../products/products.service";
 import { MailService } from "../mail/mail.service";
+import { CustomersService } from "../customers/customers.service";
 
 const DELIVERY_FEE = 25;
 const FREE_DELIVERY_ABOVE = 299;
@@ -14,12 +15,55 @@ export class OrdersService {
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private productsService: ProductsService,
-    private mailService: MailService
+    private mailService: MailService,
+    private customersService: CustomersService
   ) {}
 
-  findAll(status?: OrderStatus) {
-    const filter = status ? { status } : {};
+  async findAll(status?: OrderStatus, source?: OrderSource, search?: string) {
+    const filter: any = {};
+    if (status) filter.status = status;
+    if (source) {
+      if (source === OrderSource.WEBSITE) {
+        filter.source = { $in: [OrderSource.WEBSITE, null] };
+      } else {
+        filter.source = source;
+      }
+    }
+    if (search) {
+      filter.$or = [
+        { orderNumber: { $regex: search, $options: "i" } },
+        { customerName: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+      ];
+    }
     return this.orderModel.find(filter).sort({ createdAt: -1 }).exec();
+  }
+
+  async getAnalytics() {
+    const totalOrders = await this.orderModel.countDocuments();
+    const websiteOrders = await this.orderModel.countDocuments({ source: { $in: [OrderSource.WEBSITE, null] } });
+    const swiggyOrders = await this.orderModel.countDocuments({ source: OrderSource.SWIGGY });
+    const zomatoOrders = await this.orderModel.countDocuments({ source: OrderSource.ZOMATO });
+    const pendingOrders = await this.orderModel.countDocuments({ status: OrderStatus.PENDING });
+    const confirmedOrders = await this.orderModel.countDocuments({ status: OrderStatus.CONFIRMED });
+    const deliveredOrders = await this.orderModel.countDocuments({ status: OrderStatus.DELIVERED });
+    const cancelledOrders = await this.orderModel.countDocuments({ status: OrderStatus.CANCELLED });
+    
+    // Revenue from non-cancelled orders
+    const completedOrders = await this.orderModel.find({ status: { $ne: OrderStatus.CANCELLED } });
+    const revenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
+
+    return {
+      totalOrders,
+      websiteOrders,
+      swiggyOrders,
+      zomatoOrders,
+      pendingOrders,
+      confirmedOrders,
+      deliveredOrders,
+      cancelledOrders,
+      revenue,
+    };
   }
 
   async findOne(id: string) {
@@ -64,6 +108,7 @@ export class OrdersService {
     }
 
     const orderNumber = `SK-${Math.floor(1000 + Math.random() * 9000)}`;
+    const source = dto.source || OrderSource.WEBSITE;
 
     const order = await this.orderModel.create({
       orderNumber,
@@ -78,7 +123,17 @@ export class OrdersService {
       total,
       paymentMethod: dto.paymentMethod,
       status: OrderStatus.PENDING,
+      source,
     });
+
+    // Auto update/create customer
+    await this.customersService.updateFromOrder(
+      dto.phone,
+      dto.customerName,
+      dto.email,
+      dto.address,
+      source
+    );
 
     void this.mailService.sendOrderStatusEmail(order);
 

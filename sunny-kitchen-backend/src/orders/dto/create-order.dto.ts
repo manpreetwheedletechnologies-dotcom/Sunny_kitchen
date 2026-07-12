@@ -11,6 +11,7 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
+import { OrderSource } from "../schemas/order.schema";
 
 export class OrderItemDto {
   @IsString()
@@ -57,4 +58,8 @@ export class CreateOrderDto {
 
   @IsIn(["cod", "upi"])
   paymentMethod: "cod" | "upi";
+
+  @IsOptional()
+  @IsIn(Object.values(OrderSource))
+  source?: OrderSource;
 }

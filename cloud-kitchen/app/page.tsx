@@ -200,7 +200,7 @@ export default async function Home() {
               </span>
 
               <div className="relative mt-4 flex items-center gap-4">
-                <div className="transition-transform group-hover:scale-110 group-hover:rotate-3">
+                <div className="shrink-0 w-20 sm:w-24 transition-transform group-hover:scale-110 group-hover:rotate-3">
                   <DishPhoto emoji={combo.emoji} label={combo.name} />
                 </div>
                 <div>
