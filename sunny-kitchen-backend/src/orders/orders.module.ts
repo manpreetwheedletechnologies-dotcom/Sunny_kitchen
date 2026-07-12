@@ -6,6 +6,7 @@ import { OrdersController } from "./orders.controller";
 import { AuthModule } from "../auth/auth.module";
 import { ProductsModule } from "../products/products.module";
 import { MailModule } from "../mail/mail.module";
+import { CustomersModule } from "../customers/customers.module";
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MailModule } from "../mail/mail.module";
     AuthModule,
     ProductsModule,
     MailModule,
+    CustomersModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

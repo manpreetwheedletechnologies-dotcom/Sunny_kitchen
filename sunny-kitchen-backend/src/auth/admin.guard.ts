@@ -15,20 +15,21 @@ export class AdminGuard implements CanActivate {
     const authHeader: string | undefined = request.headers?.authorization;
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      throw new UnauthorizedException("Missing admin token");
+      throw new UnauthorizedException("Missing token");
     }
 
     const token = authHeader.slice("Bearer ".length);
 
     try {
       const payload = await this.jwtService.verifyAsync(token);
-      if (payload.role !== "admin") {
-        throw new UnauthorizedException("Not an admin token");
+      if (!["admin", "manager", "staff"].includes(payload.role)) {
+        throw new UnauthorizedException("Insufficient permissions");
       }
-      request.admin = payload;
+      request.user = payload;
+      request.admin = payload; // Keep for backward compatibility
       return true;
     } catch {
-      throw new UnauthorizedException("Invalid or expired admin token");
+      throw new UnauthorizedException("Invalid or expired token");
     }
   }
 }

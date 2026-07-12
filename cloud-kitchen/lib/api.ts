@@ -18,6 +18,7 @@ export type Product = {
   stockCount: number;
   outOfStock: boolean;
   isCombo: boolean;
+  category: string;
   sortOrder: number;
 };
 
@@ -36,6 +37,8 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+export type OrderSource = "website" | "swiggy" | "zomato";
+
 export type Order = {
   _id: string;
   orderNumber: string;
@@ -50,6 +53,40 @@ export type Order = {
   total: number;
   paymentMethod: "cod" | "upi";
   status: OrderStatus;
+  source: OrderSource;
+  createdAt: string;
+};
+
+export type Customer = {
+  _id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  address?: string;
+  totalOrders: number;
+  lastOrderDate?: string;
+  preferredPlatform: OrderSource;
+  createdAt: string;
+};
+
+export type UserRole = "admin" | "manager" | "staff";
+
+export type User = {
+  _id: string;
+  name: string;
+  email: string;
+  mobile?: string;
+  profilePictureUrl?: string;
+  role: UserRole;
+  permissions: {
+    dashboard?: boolean;
+    orders?: boolean;
+    menu?: boolean;
+    swiggy?: boolean;
+    zomato?: boolean;
+    customers?: boolean;
+    users?: boolean;
+  };
   createdAt: string;
 };
 
@@ -105,6 +142,7 @@ export function createOrder(payload: {
   notes?: string;
   items: { productId: string; name: string; price: number; qty: number }[];
   paymentMethod: "cod" | "upi";
+  source?: OrderSource;
 }) {
   return request<Order>("/orders", {
     method: "POST",
@@ -115,14 +153,27 @@ export function createOrder(payload: {
 // ---- Admin ----
 
 export function adminLogin(email: string, password: string) {
-  return request<{ accessToken: string; email: string }>("/auth/login", {
+  return request<{ accessToken: string; email: string; role: string }>("/auth/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
 }
 
-export function adminGetOrders(token: string, status?: OrderStatus) {
-  const qs = status ? `?status=${status}` : "";
+export function adminGetDashboardStats(token: string) {
+  return request<any>("/orders/analytics", { token });
+}
+
+export function adminGetOrders(
+  token: string,
+  status?: OrderStatus,
+  source?: OrderSource,
+  search?: string
+) {
+  const params = new URLSearchParams();
+  if (status) params.append("status", status);
+  if (source) params.append("source", source);
+  if (search) params.append("search", search);
+  const qs = params.toString() ? `?${params.toString()}` : "";
   return request<Order[]>(`/orders${qs}`, { token });
 }
 
@@ -194,6 +245,66 @@ export async function adminUploadProductImage(
   }
 
   return res.json() as Promise<Product>;
+}
+
+// Customers
+export function adminGetCustomers(token: string) {
+  return request<Customer[]>("/customers", { token });
+}
+
+export function adminUpdateCustomer(token: string, id: string, payload: Partial<Customer>) {
+  return request<Customer>(`/customers/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminDeleteCustomer(token: string, id: string) {
+  return request<{ deleted: boolean }>(`/customers/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+// Users (Staff/Roles)
+export function adminGetUsers(token: string) {
+  return request<User[]>("/users", { token });
+}
+
+export function adminCreateUser(token: string, payload: Partial<User>) {
+  return request<User>("/users", {
+    method: "POST",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminUpdateUser(token: string, id: string, payload: Partial<User>) {
+  return request<User>(`/users/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
+}
+
+export function adminDeleteUser(token: string, id: string) {
+  return request<{ deleted: boolean }>(`/users/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function adminGetProfile(token: string) {
+  return request<User>("/users/me", { token });
+}
+
+export function adminUpdateProfile(token: string, payload: Partial<User>) {
+  return request<User>("/users/me", {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(payload),
+  });
 }
 
 export { ApiError };

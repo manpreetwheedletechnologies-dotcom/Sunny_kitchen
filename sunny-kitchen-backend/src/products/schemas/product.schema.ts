@@ -26,6 +26,9 @@ export class Product {
   @Prop({ default: false })
   isCombo: boolean;
 
+  @Prop({ default: "Uncategorized" })
+  category: string;
+
   // Optional display order number, matches the numbered menu grid on the site.
   @Prop({ default: 0 })
   sortOrder: number;

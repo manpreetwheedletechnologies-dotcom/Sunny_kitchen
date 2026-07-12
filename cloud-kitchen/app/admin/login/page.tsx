@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SunIcon from "@/components/SunIcon";
 import { adminLogin, ApiError } from "@/lib/api";
-import { setAdminToken } from "@/lib/admin-auth";
+import { setAdminToken, setAdminRole } from "@/lib/admin-auth";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -18,8 +18,11 @@ export default function AdminLoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const { accessToken } = await adminLogin(email, password);
+      const { accessToken, role } = await adminLogin(email, password);
       setAdminToken(accessToken);
+      if (role) {
+        setAdminRole(role);
+      }
       router.push("/admin/dashboard");
     } catch (err) {
       setError(

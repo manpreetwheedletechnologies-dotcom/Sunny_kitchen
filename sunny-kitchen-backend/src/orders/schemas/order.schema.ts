@@ -12,6 +12,12 @@ export enum OrderStatus {
   CANCELLED = "cancelled",
 }
 
+export enum OrderSource {
+  WEBSITE = "website",
+  SWIGGY = "swiggy",
+  ZOMATO = "zomato",
+}
+
 @Schema()
 export class OrderLine {
   @Prop({ required: true })
@@ -69,6 +75,13 @@ export class Order {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @Prop({
+    required: true,
+    enum: Object.values(OrderSource),
+    default: OrderSource.WEBSITE,
+  })
+  source: OrderSource;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);
