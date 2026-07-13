@@ -31,6 +31,11 @@ function Entry({
             </span>
           )}
         </p>
+        {item.ingredients && (
+          <p className="font-body text-xs text-forest/60 max-w-[200px] leading-tight mb-1">
+            {item.ingredients}
+          </p>
+        )}
         <div className={`flex items-center gap-2 ${isRight ? "md:flex-row-reverse" : ""}`}>
           <span className="inline-block rounded-md bg-sun px-3 py-1 font-display text-sm font-bold text-forest">
             ₹{item.price}

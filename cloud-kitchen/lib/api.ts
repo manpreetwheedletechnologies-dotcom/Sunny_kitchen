@@ -20,6 +20,7 @@ export type Product = {
   isCombo: boolean;
   category: string;
   sortOrder: number;
+  ingredients: string;
 };
 
 export type OrderLine = {
@@ -67,6 +68,18 @@ export type Customer = {
   lastOrderDate?: string;
   preferredPlatform: OrderSource;
   createdAt: string;
+};
+
+export type LeadStatus = "New" | "Contacted" | "Qualified" | "Closed";
+
+export type Lead = {
+  _id: string;
+  name: string;
+  contactInfo: string;
+  message: string;
+  status: LeadStatus;
+  createdAt: string;
+  updatedAt: string;
 };
 
 export type UserRole = "admin" | "manager" | "staff";
@@ -145,6 +158,17 @@ export function createOrder(payload: {
   source?: OrderSource;
 }) {
   return request<Order>("/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function createLead(payload: {
+  name: string;
+  contactInfo: string;
+  message: string;
+}) {
+  return request<Lead>("/leads", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -267,6 +291,20 @@ export function adminDeleteCustomer(token: string, id: string) {
   });
 }
 
+// Leads
+export function adminGetLeads(token: string, search?: string) {
+  const qs = search ? `?search=${encodeURIComponent(search)}` : "";
+  return request<Lead[]>(`/admin/leads${qs}`, { token });
+}
+
+export function adminUpdateLeadStatus(token: string, id: string, status: LeadStatus) {
+  return request<Lead>(`/admin/leads/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ status }),
+  });
+}
+
 // Users (Staff/Roles)
 export function adminGetUsers(token: string) {
   return request<User[]>("/users", { token });
@@ -307,4 +345,60 @@ export function adminUpdateProfile(token: string, payload: Partial<User>) {
   });
 }
 
-export { ApiError };
+export { ApiError }
+
+export type Testimonial = {
+  _id: string;
+  name: string;
+  content: string;
+  rating: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// ------------------------------------------------------------------
+// AUTH / PUBLIC
+// ------------------------------------------------------------------
+
+// ------------------------------------------------------------------
+// TESTIMONIALS
+// ------------------------------------------------------------------
+
+export function getTestimonials() {
+  return request<Testimonial[]>("/testimonials");
+}
+
+export function adminGetTestimonials(token: string) {
+  return request<Testimonial[]>("/admin/testimonials", { token });
+}
+
+export function adminCreateTestimonial(
+  token: string,
+  data: { name: string; content: string; rating: number; isActive?: boolean }
+) {
+  return request<Testimonial>("/admin/testimonials", {
+    method: "POST",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminUpdateTestimonial(
+  token: string,
+  id: string,
+  data: Partial<{ name: string; content: string; rating: number; isActive: boolean }>
+) {
+  return request<Testimonial>(`/admin/testimonials/${id}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(data),
+  });
+}
+
+export function adminDeleteTestimonial(token: string, id: string) {
+  return request<void>(`/admin/testimonials/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}

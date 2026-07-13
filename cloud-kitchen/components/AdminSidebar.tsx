@@ -12,7 +12,8 @@ import {
   UserCircle,
   LogOut,
   ShoppingBag,
-  Store
+  Store,
+  MessageSquare
 } from "lucide-react";
 import { clearAdminToken, getAdminRole } from "@/lib/admin-auth";
 import { useRouter } from "next/navigation";
@@ -39,8 +40,8 @@ const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Orders", href: "/admin/orders", icon: Receipt },
-  // { name: "Zomato", href: "/admin/orders?source=zomato", icon: ZomatoIcon },
-  // { name: "Swiggy", href: "/admin/orders?source=swiggy", icon: SwiggyIcon },
+  { name: "Testimonials", href: "/admin/testimonials", icon: Users },
+  { name: "Leads", href: "/admin/leads", icon: MessageSquare },
   { name: "Customers", href: "/admin/customers", icon: Users },
   { name: "Role & Access", href: "/admin/roles", icon: ShieldCheck, adminOnly: true },
   { name: "My Profile", href: "/admin/profile", icon: UserCircle },

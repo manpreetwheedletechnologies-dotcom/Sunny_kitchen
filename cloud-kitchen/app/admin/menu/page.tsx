@@ -28,6 +28,7 @@ export default function AdminMenuPage() {
     isCombo: boolean;
     category: string;
     imageFile: File | null;
+    ingredients: string;
   }>({
     name: "",
     price: "",
@@ -35,6 +36,7 @@ export default function AdminMenuPage() {
     isCombo: false,
     category: "Uncategorized",
     imageFile: null,
+    ingredients: "",
   });
   const [creating, setCreating] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -112,6 +114,18 @@ export default function AdminMenuPage() {
     }
   }
 
+  async function updateIngredients(product: Product, ingredients: string) {
+    if (!token) return;
+    try {
+      const updated = await adminUpdateProduct(token, product._id, { ingredients });
+      setProducts((prev) =>
+        prev.map((p) => (p._id === updated._id ? updated : p))
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Ingredients update failed");
+    }
+  }
+
   async function handleImageUpload(product: Product, file: File) {
     if (!token) return;
     setUploadingId(product._id);
@@ -152,6 +166,7 @@ export default function AdminMenuPage() {
         stockCount: Number(newProduct.stockCount),
         isCombo: newProduct.isCombo,
         category: newProduct.category,
+        ingredients: newProduct.ingredients,
       });
 
       let finalProduct = created;
@@ -160,7 +175,7 @@ export default function AdminMenuPage() {
       }
 
       setProducts((prev) => [...prev, finalProduct]);
-      setNewProduct({ name: "", price: "", stockCount: "20", isCombo: false, category: "Uncategorized", imageFile: null });
+      setNewProduct({ name: "", price: "", stockCount: "20", isCombo: false, category: "Uncategorized", imageFile: null, ingredients: "" });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't add product");
     } finally {
@@ -242,6 +257,12 @@ export default function AdminMenuPage() {
             onChange={(e) => setNewProduct({ ...newProduct, stockCount: e.target.value })}
             className="focus-ring rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
           />
+          <input
+            placeholder="Ingredients (e.g. Tomato, Cheese)"
+            value={newProduct.ingredients}
+            onChange={(e) => setNewProduct({ ...newProduct, ingredients: e.target.value })}
+            className="focus-ring rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none sm:col-span-2"
+          />
         </div>
         <div className="mt-4 flex items-center justify-between flex-wrap gap-4">
           <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
@@ -272,6 +293,7 @@ export default function AdminMenuPage() {
               <tr className="border-b-2 border-forest/10 bg-creamDark/60 font-display text-xs font-bold uppercase tracking-widest text-forest/60">
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3">Item Details</th>
+                <th className="px-4 py-3">Ingredients</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Price (₹)</th>
                 <th className="px-4 py-3">Stock</th>
@@ -320,6 +342,18 @@ export default function AdminMenuPage() {
                         combo
                       </span>
                     )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <input
+                      type="text"
+                      placeholder="e.g. Flour, Sugar"
+                      defaultValue={p.ingredients}
+                      onBlur={(e) => {
+                        const val = e.target.value;
+                        if (val !== p.ingredients) updateIngredients(p, val);
+                      }}
+                      className="focus-ring w-32 md:w-40 rounded-lg border border-forest/20 bg-cream/50 px-2 py-1.5 text-sm text-forest outline-none"
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <select
