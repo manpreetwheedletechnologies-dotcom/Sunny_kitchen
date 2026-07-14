@@ -48,7 +48,7 @@ export default function Testimonials() {
             >
               {testimonials.map((testimonial, index) => (
                 <div
-                  key={testimonial.id ?? index}
+                  key={testimonial._id ?? index}
                   className="flex w-full flex-shrink-0 flex-col items-center justify-center"
                 >
                   <div className="min-h-[170px] flex flex-col items-center justify-center">
