@@ -12,7 +12,7 @@ export default function Footer() {
             </span>
           </div>
           <p className="mt-3 max-w-xs text-sm text-forest/70">
-            Homemade goodness, just for you — fresh, hygienic, and made with
+            Homemade goodness, just for you - fresh, hygienic, and made with
             love in a home-style cloud kitchen.
           </p>
         </div>
@@ -21,11 +21,7 @@ export default function Footer() {
             Kitchen
           </p>
           <p className="mt-3 text-sm text-forest/70">
-            Sector 12, Model Town
-            <br />
-            Jalandhar, Punjab
-            <br />
-            Open 10:00 – 22:00 daily
+            Open 10:00 - 22:00 daily
           </p>
         </div>
         <div>
@@ -35,7 +31,7 @@ export default function Footer() {
           <p className="mt-3 text-sm text-forest/70">
             hello@sunnyskitchen.in
             <br />
-            +91 98765 43210
+            +91 xxxxx xxxxx
           </p>
         </div>
         <div>
@@ -43,7 +39,7 @@ export default function Footer() {
             Find us on
           </p>
           <p className="mt-3 text-sm text-forest/70">
-            Cloud kitchen — exclusive on Zomato
+            Cloud kitchen - exclusive on Zomato
           </p>
         </div>
       </div>

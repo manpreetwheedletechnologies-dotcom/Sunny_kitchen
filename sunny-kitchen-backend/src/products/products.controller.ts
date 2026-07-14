@@ -67,7 +67,7 @@ export class ProductsController {
           cb(null, `${uuid()}${extname(file.originalname).toLowerCase()}`);
         },
       }),
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
       fileFilter: (_req, file, cb) => {
         const isAllowed = ALLOWED_IMAGE_TYPES.test(
           extname(file.originalname).toLowerCase()

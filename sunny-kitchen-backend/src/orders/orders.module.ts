@@ -7,6 +7,7 @@ import { AuthModule } from "../auth/auth.module";
 import { ProductsModule } from "../products/products.module";
 import { MailModule } from "../mail/mail.module";
 import { CustomersModule } from "../customers/customers.module";
+import { LeadsModule } from "../leads/leads.module";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { CustomersModule } from "../customers/customers.module";
     ProductsModule,
     MailModule,
     CustomersModule,
+    LeadsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
