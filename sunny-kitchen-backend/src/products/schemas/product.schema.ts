@@ -32,6 +32,9 @@ export class Product {
   // Optional display order number, matches the numbered menu grid on the site.
   @Prop({ default: 0 })
   sortOrder: number;
+
+  @Prop({ default: "" })
+  ingredients: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);

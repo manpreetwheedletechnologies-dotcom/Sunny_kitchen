@@ -6,6 +6,7 @@ import { CreateOrderDto } from "./dto/create-order.dto";
 import { ProductsService } from "../products/products.service";
 import { MailService } from "../mail/mail.service";
 import { CustomersService } from "../customers/customers.service";
+import { LeadsService } from "../leads/leads.service";
 
 const DELIVERY_FEE = 25;
 const FREE_DELIVERY_ABOVE = 299;
@@ -16,7 +17,8 @@ export class OrdersService {
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private productsService: ProductsService,
     private mailService: MailService,
-    private customersService: CustomersService
+    private customersService: CustomersService,
+    private leadsService: LeadsService
   ) {}
 
   async findAll(status?: OrderStatus, source?: OrderSource, search?: string) {
@@ -53,6 +55,8 @@ export class OrdersService {
     const completedOrders = await this.orderModel.find({ status: { $ne: OrderStatus.CANCELLED } });
     const revenue = completedOrders.reduce((sum, o) => sum + o.total, 0);
 
+    const leadStats = await this.leadsService.getStats();
+
     return {
       totalOrders,
       websiteOrders,
@@ -63,6 +67,7 @@ export class OrdersService {
       deliveredOrders,
       cancelledOrders,
       revenue,
+      ...leadStats,
     };
   }
 

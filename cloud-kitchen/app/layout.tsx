@@ -14,7 +14,7 @@ import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/lib/cart-context";
 
 export const metadata: Metadata = {
-  title: "Sunny's Kitchen — Homemade Goodness, Just for You!",
+  title: "Sunny's Kitchen - Homemade Goodness, Just for You!",
   description:
     "Sunny's Kitchen is a home-style cloud kitchen serving fresh, hygienic, made-with-love sandwiches, pasta, and tiffin meals — exclusive on Zomato.",
 };
