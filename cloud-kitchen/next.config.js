@@ -4,8 +4,12 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: 'http',
-        hostname: 'localhost',
+        protocol: "https",
+        hostname: "sunnyskitchen.kitchen",
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
       },
     ],
   },
