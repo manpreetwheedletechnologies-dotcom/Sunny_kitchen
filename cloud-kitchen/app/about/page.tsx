@@ -13,7 +13,7 @@ const facts = [
 
 export default function AboutPage() {
   return (
-    <main className="bg-cream min-h-screen pt-28 pb-10">
+    <main className="bg-cream min-h-screen pb-10">
       {/* Hero Section */}
       <section className="relative h-[60vh] min-h-[450px] w-full flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
@@ -26,9 +26,11 @@ export default function AboutPage() {
           />
           <div className="absolute inset-0 bg-forest/50 mix-blend-multiply" />
           <div className="absolute inset-0 bg-gradient-to-t from-cream via-transparent to-transparent" />
+          {/* Top gradient to make the dark header text readable */}
+          <div className="absolute inset-0 bg-gradient-to-b from-cream via-cream/70 to-transparent h-52" />
         </div>
-        
-        <div className="relative z-10 text-center px-5 max-w-4xl mx-auto mt-16">
+
+        <div className="relative z-10 text-center px-5 max-w-4xl mx-auto mt-26">
           <p className="font-display text-sm font-extrabold uppercase tracking-[0.3em] text-sun drop-shadow-md mb-4">
             Our Story
           </p>
@@ -39,7 +41,7 @@ export default function AboutPage() {
       </section>
 
       {/* Enhanced Story Text Section */}
-      <section className="relative z-20 -mt-24 mx-auto max-w-5xl px-5 pb-20 md:px-8">
+      <section className="relative z-20 -mt24 mx-auto max-w-5xl px-5 pb-20 md:px-8">
         <div className="bg-white rounded-[2rem] shadow-2xl border border-forest/5 p-8 md:p-14 lg:p-20">
           <div className="flex flex-col md:flex-row gap-12 items-center">
             <div className="flex-1 space-y-6 text-center md:text-left">
@@ -56,11 +58,11 @@ export default function AboutPage() {
                 <div className="h-1.5 w-24 bg-tomato rounded-full opacity-80"></div>
               </div>
             </div>
-            
+
             <div className="w-full md:w-2/5 flex flex-col gap-6">
-               <div className="relative h-72 w-full rounded-[2rem] overflow-hidden shadow-xl border-[6px] border-white transform rotate-3 transition-transform hover:rotate-0 duration-500">
-                  <Image src={hero1} alt="Cooking with love" fill className="object-cover" />
-               </div>
+              <div className="relative h-72 w-full rounded-[2rem] overflow-hidden shadow-xl border-[6px] border-white transform rotate-3 transition-transform hover:rotate-0 duration-500">
+                <Image src={hero1} alt="Cooking with love" fill className="object-cover" />
+              </div>
             </div>
           </div>
         </div>
@@ -97,10 +99,10 @@ export default function AboutPage() {
           <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
             <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
               <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">2</span>
-               What makes our food special?
+              What makes our food special?
             </h2>
             <p className="text-forest/75 leading-relaxed text-lg">
-          We cook fresh every day in small batches, using quality ingredients and recipes inspired by home kitchens. The focus is on authentic taste, balanced nutrition, and the comfort of a meal made with genuine care.
+              We cook fresh every day in small batches, using quality ingredients and recipes inspired by home kitchens. The focus is on authentic taste, balanced nutrition, and the comfort of a meal made with genuine care.
             </p>
           </div>
         </div>
@@ -119,8 +121,8 @@ export default function AboutPage() {
           ))}
         </div>
       </section>
-    
-    <Testimonials />x
+
+      <Testimonials />
     </main>
   );
 }

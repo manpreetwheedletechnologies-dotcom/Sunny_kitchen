@@ -30,7 +30,7 @@ export default async function Home() {
 
 
   return (
-    <main className="relative overflow-x-hidden">
+    <main className="relative -mt-14 overflow-x-hidden">
       {/* Yellow Dot Pattern Background */}
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute inset-0 bg-dot-pattern opacity-30" />
@@ -116,7 +116,7 @@ export default async function Home() {
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4 animate-slideUp delay-300">
             <Link
-              href="#menu"
+              href="/menu"
               className="focus-ring group relative inline-flex items-center overflow-hidden rounded-full bg-tomato px-8 py-3 font-display text-sm font-bold text-cream shadow-lg transition-all hover:bg-forest hover:scale-105 hover:shadow-2xl"
             >
               <span className="relative z-10 flex items-center gap-2">

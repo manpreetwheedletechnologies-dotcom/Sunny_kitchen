@@ -190,11 +190,16 @@ export default function CheckoutPage() {
               <input
                 required
                 type="tel"
-                minLength={7}
+                pattern="[0-9]{10}"
+                maxLength={10}
+                title="Please enter exactly 10 digits"
                 value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setForm({ ...form, phone: val });
+                }}
                 className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
-                placeholder="+91"
+                placeholder="10-digit phone number"
               />
             </label>
           </div>

@@ -22,6 +22,8 @@ export default function Footer() {
           </p>
           <p className="mt-3 text-sm text-forest/70">
             Open 10:00 - 22:00 daily
+           <br />
+            H.NO.29 Scheme 114 Part-1 Vijay Nagar, Indore, Indore, Indore, Madhya Pradesh-452010
           </p>
         </div>
         <div>
@@ -29,9 +31,9 @@ export default function Footer() {
             Order
           </p>
           <p className="mt-3 text-sm text-forest/70">
-            hello@sunnyskitchen.in
+            Sunnyskitchen8@gmail.com
             <br />
-            +91 xxxxx xxxxx
+            +91 98270 50095
           </p>
         </div>
         <div>

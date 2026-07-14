@@ -7,6 +7,7 @@ export default function AddToCart({
   name,
   price,
   emoji,
+  imageUrl,
   size = "md",
   outOfStock = false,
 }: {
@@ -14,6 +15,7 @@ export default function AddToCart({
   name: string;
   price: number;
   emoji: string;
+  imageUrl?: string | null;
   size?: "sm" | "md";
   outOfStock?: boolean;
 }) {
@@ -43,7 +45,7 @@ export default function AddToCart({
     return (
       <button
         type="button"
-        onClick={() => addItem({ id, name, price, emoji })}
+        onClick={() => addItem({ id, name, price, emoji, imageUrl })}
         className={`focus-ring rounded-full bg-forest ${pad} font-display font-bold text-cream transition hover:bg-tomato`}
       >
         Add +

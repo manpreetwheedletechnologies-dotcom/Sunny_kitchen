@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { DELIVERY_FEE, FREE_DELIVERY_ABOVE } from "@/lib/menu";
+import DishPhoto from "@/components/DishPhoto";
 
 export default function CartPage() {
   const { lines, subtotal, setQty, removeItem, ready } = useCart();
@@ -55,9 +56,9 @@ export default function CartPage() {
             key={line.id}
             className="flex items-center gap-4 py-5"
           >
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sun/40 to-tomato/20 text-2xl">
-              {line.emoji}
-            </span>
+            <div className="h-14 w-14 shrink-0 [&_.text-4xl]:text-2xl [&_.text-4xl]:md:text-2xl [&_.border-4]:border-2">
+              <DishPhoto emoji={line.emoji} imageUrl={line.imageUrl} label={line.name} />
+            </div>
             <div className="flex-1">
               <p className="font-display text-base font-semibold text-forest">
                 {line.name}
