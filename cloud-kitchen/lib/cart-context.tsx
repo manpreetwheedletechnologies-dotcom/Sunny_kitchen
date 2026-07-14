@@ -14,6 +14,7 @@ export type CartLine = {
   name: string;
   price: number;
   emoji: string;
+  imageUrl?: string | null;
   qty: number;
 };
 

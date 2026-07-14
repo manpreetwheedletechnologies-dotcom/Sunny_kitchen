@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import SunIcon from "@/components/SunIcon";
+
+import logoIcon from "./../../public/contact-logo.png";
 import { createLead } from "@/lib/api";
 import SignatureDish from "@/components/SignatureDish";
 import Testimonials from "@/components/Testimonials";
@@ -10,17 +12,20 @@ import Testimonials from "@/components/Testimonials";
 export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: "",
     contactInfo: "",
     message: "",
   });
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
+
     try {
       await createLead(formData);
+
       setSubmitted(true);
       setFormData({
         name: "",
@@ -28,6 +33,7 @@ export default function ContactPage() {
         message: "",
       });
     } catch (err) {
+      console.error(err);
       alert("Failed to submit. Please try again.");
     } finally {
       setLoading(false);
@@ -38,13 +44,23 @@ export default function ContactPage() {
     <>
       <main className="mx-auto max-w-2xl px-5 py-14 md:px-8 md:py-20">
         <div className="text-center">
-          <SunIcon className="mx-auto h-14 w-14" />
+          <Image
+            src={logoIcon}
+            alt="Logo"
+            width={56}
+            height={56}
+            priority
+            className="mx-auto h-24 w-24 object-contain"
+          />
+
           <p className="mt-3 font-display text-sm font-bold uppercase tracking-widest text-tomato">
             Get in touch
           </p>
+
           <h1 className="mt-2 font-script text-6xl text-forest md:text-7xl">
             Say Hello
           </h1>
+
           <p className="mx-auto mt-3 max-w-sm text-forest/70">
             Questions, catering requests, or feedback — send us a note. Ready
             to order?{" "}
@@ -63,10 +79,13 @@ export default function ContactPage() {
             <p className="font-display text-sm font-bold uppercase tracking-widest text-tomato">
               Message received
             </p>
+
             <p className="mt-2 font-script text-4xl text-forest">
               Thank you! We will contact you soon.
             </p>
+
             <button
+              type="button"
               onClick={() => setSubmitted(false)}
               className="mt-6 font-display text-sm font-bold text-tomato underline"
             >
@@ -83,12 +102,16 @@ export default function ContactPage() {
                 <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
                   Name
                 </span>
+
                 <input
                   required
                   type="text"
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
+                    setFormData({
+                      ...formData,
+                      name: e.target.value,
+                    })
                   }
                   className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
                   placeholder="Your name"
@@ -97,20 +120,25 @@ export default function ContactPage() {
 
               <label className="block">
                 <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
-                  Phone or email
+                  Phone
                 </span>
+
                 <input
                   required
-                  type="text"
+                  type="tel"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  title="Please enter exactly 10 digits"
                   value={formData.contactInfo}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "");
                     setFormData({
                       ...formData,
-                      contactInfo: e.target.value,
-                    })
-                  }
+                      contactInfo: val,
+                    });
+                  }}
                   className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
-                  placeholder="How should we reach you?"
+                  placeholder="10-digit phone number"
                 />
               </label>
             </div>
@@ -119,12 +147,16 @@ export default function ContactPage() {
               <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
                 Message
               </span>
+
               <textarea
                 required
                 rows={4}
                 value={formData.message}
                 onChange={(e) =>
-                  setFormData({ ...formData, message: e.target.value })
+                  setFormData({
+                    ...formData,
+                    message: e.target.value,
+                  })
                 }
                 className="focus-ring mt-2 w-full resize-none rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
                 placeholder="What's on your mind?"
@@ -142,9 +174,7 @@ export default function ContactPage() {
         )}
       </main>
 
-      {/* Signature Dish */}
       <SignatureDish />
-      {/*Testimonials */}
       <Testimonials />
     </>
   );

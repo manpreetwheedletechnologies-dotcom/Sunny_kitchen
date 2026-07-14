@@ -41,13 +41,8 @@ export default function MenuCard({ item }: { item: Product }) {
           {item.name}
         </h3>
 
-        {/* Ingredients */}
-        {/* <p className="mt-1 line-clamp-2 text-[13px] text-gray-500">
-          {item.ingredients || "North Indian, Snacks, Beverages"}
-        </p> */}
-
         {/* Footer */}
-        <div className="mt-4 flex items-center justify-between pt-2">
+        <div className="mt-1 flex items-center justify-between">
           <div className="text-[17px] font-extrabold text-gray-900 sm:text-lg">
             ₹{item.price}
           </div>
@@ -57,6 +52,7 @@ export default function MenuCard({ item }: { item: Product }) {
             name={item.name}
             price={item.price}
             emoji={item.emoji}
+            imageUrl={item.imageUrl}
             outOfStock={item.outOfStock}
             size="sm"
           />
