@@ -45,6 +45,7 @@ function Entry({
             name={item.name}
             price={item.price}
             emoji={item.emoji}
+            imageUrl={item.imageUrl}
             size="sm"
             outOfStock={item.outOfStock}
           />

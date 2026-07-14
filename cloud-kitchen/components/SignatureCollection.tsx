@@ -1,9 +1,10 @@
 import { Product, resolveImageUrl } from "@/lib/api";
 import DishPhoto from "@/components/DishPhoto";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function SignatureCollection({ products }: { products: Product[] }) {
-  // Take up to 4 non-combo products as signature items
+  // Take up to 5 non-combo products as signature items
   const signatureItems = products.filter(p => !p.isCombo).slice(0, 5);
   
   if (signatureItems.length === 0) return null;
@@ -33,9 +34,10 @@ export default function SignatureCollection({ products }: { products: Product[] 
 
         <div className="flex w-max animate-marquee hover:[animation-play-state:paused] gap-6 px-3">
           {scrollItems.map((item, i) => (
-            <div 
+            <Link 
+              href="/menu"
               key={`${item._id}-${i}`} 
-              className="bg-card w-[280px] sm:w-[320px] shrink-0 rounded-[2rem] overflow-hidden flex flex-col border border-forest/10 transition-all hover:-translate-y-2 hover:shadow-2xl"
+              className="bg-card w-[280px] sm:w-[320px] shrink-0 rounded-[2rem] overflow-hidden flex flex-col border border-forest/10 transition-all hover:-translate-y-2 hover:shadow-2xl focus-ring block"
             >
               <div className="bg-cream/40 h-56 flex items-center justify-center relative overflow-hidden group">
                 {item.imageUrl ? (
@@ -65,7 +67,7 @@ export default function SignatureCollection({ products }: { products: Product[] 
                   {item.ingredients || "Crafted with premium ingredients and our signature blend of authentic flavors."}
                 </p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </div>
