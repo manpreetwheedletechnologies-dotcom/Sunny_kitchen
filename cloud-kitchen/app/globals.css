@@ -44,3 +44,12 @@ body {
   outline: 3px solid #E8542E;
   outline-offset: 3px;
 }
+
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
