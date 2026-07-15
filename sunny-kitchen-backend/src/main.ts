@@ -15,7 +15,7 @@ async function bootstrap() {
   // Serve uploaded images at http://localhost:4000/uploads/products/<filename>
   app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads/" });
 
-  const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3001")
+  const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:4001")
     .split(",")
     .map((o) => o.trim());
 
