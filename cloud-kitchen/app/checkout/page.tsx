@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useCart } from "@/lib/cart-context";
 import { DELIVERY_FEE, FREE_DELIVERY_ABOVE } from "@/lib/menu";
-import { createOrder, ApiError, type Order } from "@/lib/api";
+import { createOrder, getPublicOrder, ApiError, type Order, type PaymentStatus } from "@/lib/api";
 
 type PaymentMethod = "cod" | "upi";
 
 export default function CheckoutPage() {
   const { lines, subtotal, clearCart, ready } = useCart();
   const [payment, setPayment] = useState<PaymentMethod>("cod");
+  const [userPaymentStatus, setUserPaymentStatus] = useState<"User_Done" | "User_Not_Done" | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [pollingStatus, setPollingStatus] = useState<PaymentStatus>("Pending");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -29,6 +32,10 @@ export default function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!userPaymentStatus) {
+      setError("Please confirm your payment status by clicking Done or Not Done below the QR code.");
+      return;
+    }
     setError(null);
     setPlacing(true);
     try {
@@ -45,8 +52,10 @@ export default function CheckoutPage() {
           price: l.price,
           qty: l.qty,
         })),
+        paymentStatus: userPaymentStatus,
       });
       setOrder(result);
+      setPollingStatus(result.paymentStatus);
       clearCart();
     } catch (err) {
       if (err instanceof ApiError) {
@@ -60,6 +69,21 @@ export default function CheckoutPage() {
       setPlacing(false);
     }
   }
+
+  useEffect(() => {
+    if (!order) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getPublicOrder(order._id);
+        if (res.paymentStatus !== pollingStatus) {
+          setPollingStatus(res.paymentStatus);
+        }
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [order, pollingStatus]);
 
   if (!ready) {
     return (
@@ -96,7 +120,23 @@ export default function CheckoutPage() {
         </p>
         <div className="mx-auto mt-8 w-fit rounded-2xl border-2 border-forest/15 bg-card px-8 py-4">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/60">
-            Payment
+            Payment Status
+          </p>
+          <div className="mt-2 text-xl font-bold font-display flex items-center justify-center gap-2">
+            {pollingStatus === "Confirmed" ? (
+              <span className="text-forest">✅ Confirmed by Sunny</span>
+            ) : pollingStatus === "Pending" ? (
+              <span className="text-[#c09665]">⏳ Pending</span>
+            ) : pollingStatus === "User_Done" ? (
+              <span className="text-[#c09665]">⏳ Verifying Payment...</span>
+            ) : (
+              <span className="text-tomato">❌ Not Done</span>
+            )}
+          </div>
+        </div>
+        <div className="mx-auto mt-4 w-fit rounded-2xl border-2 border-forest/15 bg-card px-8 py-4">
+          <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/60">
+            Payment Method
           </p>
           <p className="font-display text-base font-semibold text-forest">
             {order.paymentMethod === "cod"
@@ -272,6 +312,49 @@ export default function CheckoutPage() {
               >
                 📱 UPI
               </button>
+            </div>
+            
+            {/* QR Code and Actions */}
+            <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-forest/20 bg-cream/50 p-6">
+              <p className="font-display text-sm font-bold uppercase tracking-widest text-forest mb-4 text-center">
+                Scan to Pay
+              </p>
+              <div className="w-48 h-48 relative rounded-xl overflow-hidden shadow-md border-4 border-white mb-6 bg-white flex items-center justify-center">
+                <Image
+                  src="/qr_code.png"
+                  alt="Payment QR Code"
+                  width={180}
+                  height={180}
+                  className="object-contain"
+                />
+              </div>
+              <p className="text-sm text-forest/80 mb-4 text-center">
+                Please scan the QR code above to complete your payment, then confirm below.
+              </p>
+              <div className="flex gap-4 w-full">
+                <button
+                  type="button"
+                  onClick={() => setUserPaymentStatus("User_Done")}
+                  className={`flex-1 focus-ring rounded-xl border-2 px-4 py-3 text-center font-display text-sm font-bold transition ${
+                    userPaymentStatus === "User_Done"
+                      ? "border-forest bg-forest text-cream"
+                      : "border-forest/20 text-forest hover:border-forest/40 bg-white"
+                  }`}
+                >
+                  ✅ Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserPaymentStatus("User_Not_Done")}
+                  className={`flex-1 focus-ring rounded-xl border-2 px-4 py-3 text-center font-display text-sm font-bold transition ${
+                    userPaymentStatus === "User_Not_Done"
+                      ? "border-tomato bg-tomato text-cream"
+                      : "border-tomato/20 text-tomato hover:border-tomato/40 bg-white"
+                  }`}
+                >
+                  ❌ Not Done
+                </button>
+              </div>
             </div>
           </div>
         </form>

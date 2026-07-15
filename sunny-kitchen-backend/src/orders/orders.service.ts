@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { Order, OrderDocument, OrderStatus, OrderSource } from "./schemas/order.schema";
+import { Order, OrderDocument, OrderStatus, OrderSource, PaymentStatus } from "./schemas/order.schema";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { ProductsService } from "../products/products.service";
 import { MailService } from "../mail/mail.service";
@@ -128,6 +128,7 @@ export class OrdersService {
       total,
       paymentMethod: dto.paymentMethod,
       status: OrderStatus.PENDING,
+      paymentStatus: dto.paymentStatus || PaymentStatus.PENDING,
       source,
     });
 
@@ -153,6 +154,14 @@ export class OrdersService {
 
     void this.mailService.sendOrderStatusEmail(order);
 
+    return order;
+  }
+
+  async updatePaymentStatus(id: string, paymentStatus: string) {
+    const order = await this.orderModel
+      .findByIdAndUpdate(id, { paymentStatus }, { new: true })
+      .exec();
+    if (!order) throw new NotFoundException("Order not found");
     return order;
   }
 }
