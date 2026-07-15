@@ -38,6 +38,8 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 
+export type PaymentStatus = "Pending" | "User_Done" | "User_Not_Done" | "Confirmed";
+
 export type OrderSource = "website" | "swiggy" | "zomato";
 
 export type Order = {
@@ -54,6 +56,7 @@ export type Order = {
   total: number;
   paymentMethod: "cod" | "upi";
   status: OrderStatus;
+  paymentStatus: PaymentStatus;
   source: OrderSource;
   createdAt: string;
 };
@@ -155,6 +158,7 @@ export function createOrder(payload: {
   notes?: string;
   items: { productId: string; name: string; price: number; qty: number }[];
   paymentMethod: "cod" | "upi";
+  paymentStatus: PaymentStatus;
   source?: OrderSource;
 }) {
   return request<Order>("/orders", {
@@ -211,6 +215,22 @@ export function adminUpdateOrderStatus(
     token,
     body: JSON.stringify({ status }),
   });
+}
+
+export function adminUpdateOrderPaymentStatus(
+  token: string,
+  id: string,
+  paymentStatus: PaymentStatus
+) {
+  return request<Order>(`/orders/${id}/payment-status`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ paymentStatus }),
+  });
+}
+
+export function getPublicOrder(id: string) {
+  return request<{ status: OrderStatus; paymentStatus: PaymentStatus }>(`/orders/public/${id}`);
 }
 
 export function adminCreateProduct(

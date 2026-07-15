@@ -17,7 +17,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   return (
     <>
       <Header />
-      <div className="pt-[45px]">
+      <div className="pt-[50px]">
         {children}
       </div>
       <CartBar />

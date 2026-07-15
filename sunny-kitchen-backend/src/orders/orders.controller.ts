@@ -11,8 +11,9 @@ import {
 import { OrdersService } from "./orders.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderStatusDto } from "./dto/update-order-status.dto";
+import { UpdatePaymentStatusDto } from "./dto/update-payment-status.dto";
 import { AdminGuard } from "../auth/admin.guard";
-import { OrderStatus, OrderSource } from "./schemas/order.schema";
+import { OrderStatus, OrderSource, PaymentStatus } from "./schemas/order.schema";
 
 @Controller("orders")
 export class OrdersController {
@@ -75,6 +76,16 @@ export class OrdersController {
     return { success: true, message: "Seeded 4 dummy orders." };
   }
 
+  // Public endpoint to poll order status without auth
+  @Get("public/:id")
+  async getPublicOrder(@Param("id") id: string) {
+    const order = await this.ordersService.findOne(id);
+    return {
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+    };
+  }
+
   @UseGuards(AdminGuard)
   @Get("analytics")
   getAnalytics() {
@@ -102,5 +113,11 @@ export class OrdersController {
   @Patch(":id/status")
   updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, dto.status);
+  }
+
+  @UseGuards(AdminGuard)
+  @Patch(":id/payment-status")
+  updatePaymentStatus(@Param("id") id: string, @Body() dto: UpdatePaymentStatusDto) {
+    return this.ordersService.updatePaymentStatus(id, dto.paymentStatus);
   }
 }

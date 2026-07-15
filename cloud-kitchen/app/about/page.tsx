@@ -46,13 +46,13 @@ export default function AboutPage() {
           <div className="flex flex-col md:flex-row gap-12 items-center">
             <div className="flex-1 space-y-6 text-center md:text-left">
               <h2 className="font-display text-3xl font-extrabold text-forest md:text-4xl leading-tight">
-                The spark that started it all
+                What Makes Sunny's Kitchen Special?
               </h2>
               <p className="font-body text-lg text-forest/70 leading-relaxed">
-                Sunny&apos;s Kitchen didn&apos;t begin in a boardroom or a commercial restaurant. It started as a handful of lovingly prepared tiffins made for neighbours who craved the comforting taste of home after a long, busy workday.
+                Sunny's Kitchen brings together the freshness of quality ingredients, the comfort of homestyle cooking, and the experience of a premium café in every order. 
               </p>
               <p className="font-body text-lg text-forest/70 leading-relaxed">
-                We don&apos;t have a massive dining room or a menu printed in five languages. What we have is a genuine passion for simple, authentic homestyle food. Every dish is made fresh in small batches and sent out the door while it&apos;s still piping hot—just like we would serve our own family.
+              From thoughtful preparation and exceptional hygiene to flavours crafted to delight, we believe great food should do more than satisfy hunger, it should brighten your day and leave you looking forward to your next meal.
               </p>
               <div className="pt-4 flex justify-center md:justify-start">
                 <div className="h-1.5 w-24 bg-tomato rounded-full opacity-80"></div>
@@ -90,19 +90,55 @@ export default function AboutPage() {
           <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
             <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
               <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">1</span>
-              Why homemade?
+              Freshly Crafted, Never Rushed
             </h2>
             <p className="text-forest/75 leading-relaxed text-lg">
-              Restaurant kitchens cook for sheer volume. We cook for taste. By sticking to small batches, simple ingredients, and recipes straight from our family&apos;s cookbook, we ensure that what you order is exactly what we&apos;d eat ourselves.
+              Every dish is prepared fresh to order using quality ingredients, ensuring exceptional flavour and freshness every time.
             </p>
           </div>
           <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
             <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
               <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">2</span>
-              What makes our food special?
+              Café Quality, Delivered
             </h2>
             <p className="text-forest/75 leading-relaxed text-lg">
-              We cook fresh every day in small batches, using quality ingredients and recipes inspired by home kitchens. The focus is on authentic taste, balanced nutrition, and the comfort of a meal made with genuine care.
+             We bring the warmth, comfort, and attention to detail of a premium café experience directly to your doorstep.
+            </p>
+          </div>
+          <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
+              <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">3</span>
+              Ingredients That Speak for Themselves
+            </h2>
+            <p className="text-forest/75 leading-relaxed text-lg">
+              From fresh vegetables and artisanal breads to rich cheeses and carefully chosen seasonings, quality begins with what goes into every dish.
+            </p>
+          </div>
+          <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
+              <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">4</span>
+              Thoughtful Cooking, Exceptional Taste
+            </h2>
+            <p className="text-forest/75 leading-relaxed text-lg">
+              Our food is prepared with precision and care, balancing comforting classics with flavours you'll want to come back for.
+            </p>
+          </div>
+          <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
+              <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">5</span>
+             Hygiene Meets Hospitality
+            </h2>
+            <p className="text-forest/75 leading-relaxed text-lg">
+             Maintaining the highest standards of cleanliness, preparation, and packaging is as important to us as the food itself.
+            </p>
+          </div>
+          <div className="bg-card p-10 rounded-3xl shadow-md border border-forest/10 hover:shadow-xl transition-all hover:-translate-y-1">
+            <h2 className="font-display text-2xl font-black text-forest mb-5 flex items-center gap-4">
+              <span className="bg-tomato text-cream w-12 h-12 flex items-center justify-center rounded-full text-xl shadow-md">6</span>
+             Made for Everyday Indulgence
+            </h2>
+            <p className="text-forest/75 leading-relaxed text-lg">
+              Whether you're craving a perfectly grilled sandwich, a wholesome breakfast, or a comforting meal, Sunny's Kitchen turns everyday dining into something worth looking forward to.
             </p>
           </div>
         </div>
