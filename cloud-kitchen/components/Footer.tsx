@@ -67,7 +67,7 @@ export default function Footer() {
           </p>
 
           <p className="mt-3 text-sm text-forest/70">
-            Cloud kitchen - exclusive on Zomato
+          
           </p>
 
           <div className="mt-4 flex items-center gap-3">

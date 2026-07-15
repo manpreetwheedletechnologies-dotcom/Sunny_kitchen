@@ -69,15 +69,15 @@ export default async function Home() {
         <div className="pointer-events-none absolute bottom-12 left-1/4 z-10 h-2 w-2 rounded-full bg-sun/50 animate-ping delay-300" />
 
         <div className="relative z-20 mx-auto max-w-4xl px-5 pb-16 pt-32 text-center md:px-8 md:pb-24 md:pt-40">
-          <div className="ml-auto mb-4 hidden w-fit items-center gap-2 rounded-full border-2 border-forest bg-card/90 px-4 py-1.5 backdrop-blur-sm md:flex animate-fadeIn">
-            <span className="font-display text-xs font-bold uppercase tracking-wide text-forest">
+          {/* <div className="ml-auto mb-4 hidden w-fit items-center gap-2 rounded-full border-2 border-forest bg-card/90 px-4 py-1.5 backdrop-blur-sm md:flex animate-fadeIn"> */}
+            {/* <span className="font-display text-xs font-bold uppercase tracking-wide text-forest">
               Cloud kitchen · exclusive on
             </span>
             <span className="font-display text-sm font-extrabold text-tomato animate-pulse">
               zomato
-            </span>
-            <Award className="h-4 w-4 text-sun" />
-          </div>
+            </span> */}
+            {/* <Award className="h-4 w-4 text-sun" /> */}
+          {/* </div> */}
 
           <div className="relative inline-block mb-4">
             <div className="absolute inset-0 rounded-full bg-sun/40 blur-3xl animate-pulse" />
