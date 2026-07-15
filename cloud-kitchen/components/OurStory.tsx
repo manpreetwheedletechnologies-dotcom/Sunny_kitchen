@@ -37,10 +37,16 @@ export default function OurStory() {
           </h2>
           <div className="space-y-6 text-forest/80 leading-relaxed font-body text-lg">
             <p>
-              At Sunny&apos;s Kitchen, we believe every meal, every coffee, and every conversation deserves the perfect setting.
+              At Sunny's Kitchen, we believe great food is more than a meal, it's a moment of comfort, connection, and indulgence.
+              <br />
+              Inspired by the warmth of neighbourhood cafés and the joy of freshly prepared food, Sunny's Kitchen was created to bring thoughtfully crafted dishes to your doorstep without compromising on quality, freshness, or experience.
+              <br />
+              Every sandwich is grilled to perfection, every ingredient is carefully selected, and every order is prepared with attention to detail that you can taste in every bite. From comforting classics to bold flavours, our menu is designed for those who appreciate good food made well.
             </p>
             <p>
-              Thoughtfully designed and passionately crafted, Sunny&apos;s Kitchen is more than just a kitchen; it is a destination for connections, celebrations, work sessions, and memorable experiences.
+              Whether it's a slow morning breakfast, a mid-day pick-me-up, or an evening craving, Sunny's Kitchen is your everyday escape into fresh flavours and comforting favourites.
+              <br />
+              Because the best meals aren't just eaten, they're experienced.
             </p>
           </div>
           <Link

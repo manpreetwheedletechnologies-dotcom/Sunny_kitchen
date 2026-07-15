@@ -6,10 +6,12 @@ import { getAdminToken } from "@/lib/admin-auth";
 import {
   adminGetOrders,
   adminUpdateOrderStatus,
+  adminUpdateOrderPaymentStatus,
   ApiError,
   type Order,
   type OrderStatus,
   type OrderSource,
+  type PaymentStatus,
 } from "@/lib/api";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -89,6 +91,18 @@ function OrdersContent() {
       );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Status update failed");
+    }
+  }
+
+  async function changeOrderPaymentStatus(order: Order, paymentStatus: PaymentStatus) {
+    if (!token) return;
+    try {
+      const updated = await adminUpdateOrderPaymentStatus(token, order._id, paymentStatus);
+      setOrders((prev) =>
+        prev.map((o) => (o._id === updated._id ? updated : o))
+      );
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Payment status update failed");
     }
   }
 
@@ -217,6 +231,18 @@ function OrdersContent() {
                     <span className="font-semibold uppercase text-xs tracking-wider bg-forest/10 px-2 py-1 rounded">
                       {order.paymentMethod === "cod" ? "COD" : "UPI"}
                     </span>
+                    <select
+                      value={order.paymentStatus || "Pending"}
+                      onChange={(e) =>
+                        changeOrderPaymentStatus(order, e.target.value as PaymentStatus)
+                      }
+                      className="focus-ring rounded border border-forest/20 bg-white px-2 py-1 text-xs font-semibold text-forest cursor-pointer"
+                    >
+                      {order.paymentStatus === "User_Done" && <option value="User_Done" disabled>User Done</option>}
+                      {order.paymentStatus === "User_Not_Done" && <option value="User_Not_Done" disabled>User Not Done</option>}
+                      <option value="Pending">Pending</option>
+                      <option value="Confirmed">Confirmed</option>
+                    </select>
                     Delivery: ₹{order.deliveryFee}
                   </span>
                   <span className="font-display text-lg font-extrabold text-forest">

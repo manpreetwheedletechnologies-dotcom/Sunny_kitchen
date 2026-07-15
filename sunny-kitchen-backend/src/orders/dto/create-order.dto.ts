@@ -11,7 +11,7 @@ import {
   MinLength,
   ValidateNested,
 } from "class-validator";
-import { OrderSource } from "../schemas/order.schema";
+import { OrderSource, PaymentStatus } from "../schemas/order.schema";
 
 export class OrderItemDto {
   @IsString()
@@ -62,4 +62,8 @@ export class CreateOrderDto {
   @IsOptional()
   @IsIn(Object.values(OrderSource))
   source?: OrderSource;
+
+  @IsOptional()
+  @IsIn(Object.values(PaymentStatus))
+  paymentStatus?: PaymentStatus;
 }

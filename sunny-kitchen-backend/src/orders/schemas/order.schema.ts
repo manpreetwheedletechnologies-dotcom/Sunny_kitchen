@@ -12,6 +12,13 @@ export enum OrderStatus {
   CANCELLED = "cancelled",
 }
 
+export enum PaymentStatus {
+  PENDING = "Pending",
+  USER_DONE = "User_Done",
+  USER_NOT_DONE = "User_Not_Done",
+  CONFIRMED = "Confirmed",
+}
+
 export enum OrderSource {
   WEBSITE = "website",
   SWIGGY = "swiggy",
@@ -75,6 +82,13 @@ export class Order {
     default: OrderStatus.PENDING,
   })
   status: OrderStatus;
+
+  @Prop({
+    required: true,
+    enum: Object.values(PaymentStatus),
+    default: PaymentStatus.PENDING,
+  })
+  paymentStatus: PaymentStatus;
 
   @Prop({
     required: true,
