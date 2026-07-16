@@ -7,13 +7,19 @@ export default function MenuCard({ item }: { item: Product }) {
   return (
     <div className="group flex flex-col overflow-hidden rounded-[2rem] border border-black/5 bg-white shadow-sm transition-all hover:shadow-md">
       {/* Image Container */}
-      <div className="relative h-56 w-full overflow-hidden bg-cream/40 flex items-center justify-center">
+      <div
+        className={`relative w-full overflow-hidden bg-cream/40 flex items-center justify-center ${
+          item.isCombo ? "h-72 sm:h-80" : "h-56"
+        }`}
+      >
         {item.imageUrl ? (
           <Image
             src={resolveImageUrl(item.imageUrl) as string}
             alt={item.name}
             fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105"
+            className={`object-cover transition-transform duration-700 ${
+              item.isCombo ? "" : "group-hover:scale-105"
+            }`}
           />
         ) : (
           <div className="h-24 w-24 transition-transform duration-700 group-hover:scale-110">
