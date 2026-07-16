@@ -60,6 +60,10 @@ export class CreateOrderDto {
   paymentMethod: "cod" | "upi";
 
   @IsOptional()
+  @IsString()
+  discountCode?: string;
+
+  @IsOptional()
   @IsIn(Object.values(OrderSource))
   source?: OrderSource;
 

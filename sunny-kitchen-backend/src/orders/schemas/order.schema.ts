@@ -76,6 +76,12 @@ export class Order {
   @Prop({ required: true, enum: ["cod", "upi"] })
   paymentMethod: string;
 
+  @Prop()
+  discountCode?: string;
+
+  @Prop({ default: 0 })
+  discountAmount?: number;
+
   @Prop({
     required: true,
     enum: Object.values(OrderStatus),

@@ -52,6 +52,8 @@ export type Order = {
   notes?: string;
   items: OrderLine[];
   subtotal: number;
+  discountCode?: string;
+  discountAmount?: number;
   deliveryFee: number;
   total: number;
   paymentMethod: "cod" | "upi";
@@ -160,8 +162,22 @@ export function createOrder(payload: {
   paymentMethod: "cod" | "upi";
   paymentStatus: PaymentStatus;
   source?: OrderSource;
+  discountCode?: string;
 }) {
   return request<Order>("/orders", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function simulateOrder(payload: {
+  source: OrderSource;
+  customerName: string;
+  phone: string;
+  address: string;
+  items: { productId: string; qty: number }[];
+}) {
+  return request<Order>("/orders/simulate", {
     method: "POST",
     body: JSON.stringify(payload),
   });

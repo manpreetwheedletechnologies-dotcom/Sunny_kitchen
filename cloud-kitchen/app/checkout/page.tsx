@@ -18,6 +18,10 @@ export default function CheckoutPage() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState("");
+  const [source, setSource] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -26,9 +30,41 @@ export default function CheckoutPage() {
     notes: "",
   });
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedCoupon = localStorage.getItem("promo_coupon");
+      const savedSource = localStorage.getItem("promo_source");
+      if (savedCoupon && savedCoupon.toUpperCase() === "DIRECT20") {
+        setAppliedCoupon("DIRECT20");
+        setCouponInput("DIRECT20");
+      }
+      if (savedSource) {
+        setSource(savedSource);
+      }
+    }
+  }, []);
+
+  const discount = appliedCoupon.toUpperCase() === "DIRECT20" ? Math.round(subtotal * 0.2) : 0;
+
   const deliveryFee =
     subtotal === 0 || subtotal >= FREE_DELIVERY_ABOVE ? 0 : DELIVERY_FEE;
-  const total = subtotal + deliveryFee;
+  const total = Math.max(0, subtotal - discount + deliveryFee);
+
+  function handleApplyCoupon(e: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (couponInput.toUpperCase() === "DIRECT20") {
+      setAppliedCoupon("DIRECT20");
+      setError(null);
+    } else {
+      setError("Invalid coupon code. Try DIRECT20.");
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon("");
+    setCouponInput("");
+    localStorage.removeItem("promo_coupon");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,10 +89,14 @@ export default function CheckoutPage() {
           qty: l.qty,
         })),
         paymentStatus: userPaymentStatus,
+        discountCode: appliedCoupon || undefined,
+        source: (source as any) || undefined,
       });
       setOrder(result);
       setPollingStatus(result.paymentStatus);
       clearCart();
+      localStorage.removeItem("promo_coupon");
+      localStorage.removeItem("promo_source");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -134,7 +174,7 @@ export default function CheckoutPage() {
             )}
           </div>
         </div>
-        <div className="mx-auto mt-4 w-fit rounded-2xl border-2 border-forest/15 bg-card px-8 py-4">
+        <div className="mx-auto mt-4 w-fit rounded-2xl border-2 border-forest/15 bg-card px-8 py-4 min-w-[280px]">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/60">
             Payment Method
           </p>
@@ -143,10 +183,28 @@ export default function CheckoutPage() {
               ? "Cash on delivery"
               : "UPI — pay on delivery link sent by SMS"}
           </p>
+          
+          {order.discountAmount && order.discountAmount > 0 ? (
+            <>
+              <p className="mt-3 font-display text-xs font-bold uppercase tracking-widest text-forest/60">
+                Subtotal
+              </p>
+              <p className="font-display text-base font-semibold text-forest/80">
+                ₹{order.subtotal}
+              </p>
+              <p className="mt-3 font-display text-xs font-bold uppercase tracking-widest text-tomato">
+                Discount ({order.discountCode})
+              </p>
+              <p className="font-display text-base font-semibold text-tomato">
+                -₹{order.discountAmount}
+              </p>
+            </>
+          ) : null}
+
           <p className="mt-3 font-display text-xs font-bold uppercase tracking-widest text-forest/60">
-            Total
+            Total Paid/Due
           </p>
-          <p className="font-display text-base font-semibold text-forest">
+          <p className="font-display text-lg font-extrabold text-forest">
             ₹{order.total}
           </p>
         </div>
@@ -383,6 +441,12 @@ export default function CheckoutPage() {
               <span>Subtotal</span>
               <span>₹{subtotal}</span>
             </div>
+            {discount > 0 && (
+              <div className="flex justify-between text-tomato font-semibold">
+                <span>Discount ({appliedCoupon})</span>
+                <span>-₹{discount}</span>
+              </div>
+            )}
             <div className="flex justify-between">
               <span>Delivery fee</span>
               <span>{deliveryFee === 0 ? "Free" : `₹${deliveryFee}`}</span>
@@ -391,6 +455,42 @@ export default function CheckoutPage() {
           <div className="mt-3 flex justify-between border-t border-dashed border-forest/25 pt-3 font-display text-lg font-extrabold text-forest">
             <span>Total</span>
             <span>₹{total}</span>
+          </div>
+
+          {/* Coupon Code Section */}
+          <div className="mt-6 border-t border-dashed border-forest/25 pt-4">
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/70 mb-2">
+              Promo Coupon
+            </p>
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-tomato/10 border border-tomato/20 rounded-xl px-3 py-2 text-xs text-tomato">
+                <span className="font-display font-bold">🎉 {appliedCoupon} active (20% off)</span>
+                <button
+                  type="button"
+                  onClick={handleRemoveCoupon}
+                  className="font-display font-bold hover:underline text-[10px] uppercase text-tomato"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter code (e.g. DIRECT20)"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value)}
+                  className="flex-1 focus-ring rounded-lg border-2 border-forest/15 bg-cream px-3 py-1.5 text-xs text-forest outline-none uppercase placeholder:text-forest/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleApplyCoupon}
+                  className="focus-ring rounded-lg bg-forest px-3 py-1.5 font-display text-xs font-bold text-cream transition hover:bg-forestDark active:scale-95"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
           </div>
 
           <button
