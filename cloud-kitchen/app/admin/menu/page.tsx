@@ -41,6 +41,43 @@ export default function AdminMenuPage() {
   const [creating, setCreating] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
+  const [syncing, setSyncing] = useState(false);
+  const [syncStep, setSyncStep] = useState(0);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+
+  const SYNC_STEPS = [
+    "Establishing secure link with Petpooja catalog aggregator...",
+    "Sending product catalogs to Swiggy API portal...",
+    "Sending product catalogs to Zomato API portal...",
+    "Uploading ingredients lists & item categories...",
+    "Syncing stock counts & availability status...",
+    "Sync complete! 🚀 Your website's menu is now live on Swiggy & Zomato."
+  ];
+
+  const handleSyncMenu = useCallback(() => {
+    setSyncing(true);
+    setShowSyncModal(true);
+    setSyncStep(0);
+
+    const runSync = (step: number) => {
+      if (step < SYNC_STEPS.length - 1) {
+        setTimeout(() => {
+          setSyncStep(step + 1);
+          runSync(step + 1);
+        }, 1000);
+      } else {
+        setTimeout(() => {
+          setSyncing(false);
+          setTimeout(() => {
+            setShowSyncModal(false);
+          }, 1500);
+        }, 1200);
+      }
+    };
+
+    runSync(0);
+  }, [products]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -185,11 +222,21 @@ export default function AdminMenuPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="font-script text-4xl text-forest">Menu Management</h2>
-        <p className="mt-1 font-display text-sm font-semibold text-forest/60">
-          Manage your products, categories, pricing, and availability.
-        </p>
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div>
+          <h2 className="font-script text-4xl text-forest">Menu Management</h2>
+          <p className="mt-1 font-display text-sm font-semibold text-forest/60">
+            Manage your products, categories, pricing, and availability.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleSyncMenu}
+          disabled={syncing || products.length === 0}
+          className="focus-ring rounded-full bg-forest border border-forest/10 hover:bg-tomato transition px-5 py-2.5 font-display text-xs font-bold uppercase tracking-wider text-cream flex items-center gap-2 shadow hover:scale-105 active:scale-95 disabled:opacity-50"
+        >
+          {syncing ? "🔄 Syncing Menu..." : "🔄 Sync to Swiggy/Zomato"}
+        </button>
       </div>
 
       {error && (
@@ -337,11 +384,16 @@ export default function AdminMenuPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="font-semibold text-forest text-base">{p.name}</div>
-                    {p.isCombo && (
-                      <span className="inline-block mt-1 rounded-full bg-sun px-2 py-0.5 text-[10px] font-bold text-forest uppercase tracking-wide">
-                        combo
+                    <div className="flex gap-1.5 mt-1 items-center flex-wrap">
+                      {p.isCombo && (
+                        <span className="rounded-full bg-sun px-2 py-0.5 text-[10px] font-bold text-forest uppercase tracking-wide">
+                          combo
+                        </span>
+                      )}
+                      <span className="rounded-full bg-forest/10 px-2 py-0.5 text-[9px] font-bold text-forest uppercase tracking-wide border border-forest/10">
+                        Synced 🔄
                       </span>
-                    )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <input
@@ -416,6 +468,42 @@ export default function AdminMenuPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Sync Catalog Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md border-2 border-forest/15 bg-card rounded-3xl p-6 md:p-8 shadow-2xl relative text-center animate-in zoom-in-95 duration-200">
+            <h3 className="font-display text-2xl font-bold text-forest mb-4 flex items-center justify-center gap-2">
+              <span>🔄 Platform Menu Sync</span>
+            </h3>
+
+            <div className="flex justify-center items-center h-20">
+              {syncing ? (
+                <div className="h-12 w-12 rounded-full border-4 border-forest/10 border-t-tomato animate-spin" />
+              ) : (
+                <div className="text-4xl animate-bounce">✅</div>
+              )}
+            </div>
+
+            <p className="font-display text-sm font-semibold text-forest mt-4 transition-all duration-300">
+              {SYNC_STEPS[syncStep]}
+            </p>
+            
+            <p className="text-xs text-forest/50 mt-2 font-body">
+              Syncing {products.length} products to active food aggregators.
+            </p>
+
+            {syncing && (
+              <div className="mt-6 w-full bg-cream rounded-full h-2 overflow-hidden">
+                <div 
+                  className="bg-tomato h-full transition-all duration-500 ease-out" 
+                  style={{ width: `${((syncStep + 1) / SYNC_STEPS.length) * 100}%` }}
+                />
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -104,8 +104,13 @@ export class OrdersService {
       });
     }
 
+    let discountAmount = 0;
+    if (dto.discountCode && dto.discountCode.toUpperCase() === "DIRECT20") {
+      discountAmount = Math.round(subtotal * 0.2); // 20% off
+    }
+
     const deliveryFee = subtotal >= FREE_DELIVERY_ABOVE ? 0 : DELIVERY_FEE;
-    const total = subtotal + deliveryFee;
+    const total = Math.max(0, subtotal - discountAmount + deliveryFee);
 
     // Decrement stock for each item now that we know the whole order is valid.
     for (const item of verifiedItems) {
@@ -124,6 +129,8 @@ export class OrdersService {
       notes: dto.notes,
       items: verifiedItems,
       subtotal,
+      discountCode: dto.discountCode,
+      discountAmount,
       deliveryFee,
       total,
       paymentMethod: dto.paymentMethod,
@@ -163,5 +170,34 @@ export class OrdersService {
       .exec();
     if (!order) throw new NotFoundException("Order not found");
     return order;
+  }
+
+  async simulate(dto: {
+    source: OrderSource;
+    customerName: string;
+    phone: string;
+    address: string;
+    items: { productId: string; qty: number }[];
+  }) {
+    const verifiedItems: any[] = [];
+    for (const item of dto.items) {
+      const product = await this.productsService.findOne(item.productId);
+      verifiedItems.push({
+        productId: item.productId,
+        name: product.name,
+        price: product.price,
+        qty: item.qty,
+      });
+    }
+
+    return this.create({
+      customerName: dto.customerName,
+      phone: dto.phone,
+      address: dto.address,
+      paymentMethod: "cod",
+      items: verifiedItems,
+      source: dto.source,
+      paymentStatus: PaymentStatus.PENDING,
+    });
   }
 }

@@ -76,6 +76,20 @@ export class OrdersController {
     return { success: true, message: "Seeded 4 dummy orders." };
   }
 
+  @Post("simulate")
+  async simulateOrder(
+    @Body()
+    body: {
+      source: OrderSource;
+      customerName: string;
+      phone: string;
+      address: string;
+      items: { productId: string; qty: number }[];
+    }
+  ) {
+    return this.ordersService.simulate(body);
+  }
+
   // Public endpoint to poll order status without auth
   @Get("public/:id")
   async getPublicOrder(@Param("id") id: string) {
