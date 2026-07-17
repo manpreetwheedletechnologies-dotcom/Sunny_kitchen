@@ -1,19 +1,28 @@
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
 import { ValidationPipe } from "@nestjs/common";
-import { join } from "path";
 import { mkdirSync } from "fs";
 import { AppModule } from "./app.module";
+import { getUploadsRootDir, getProductsUploadsDir } from "./uploads-path";
 
 async function bootstrap() {
   // Make sure the folder that uploaded product photos get saved to exists.
-  const uploadsDir = join(process.cwd(), "uploads", "products");
-  mkdirSync(uploadsDir, { recursive: true });
+  // getUploadsRootDir() resolves a FIXED absolute path (via UPLOADS_DIR env var,
+  // defaulting to a folder next to this project) instead of process.cwd(),
+  // which changes depending on how/where the process happens to be launched
+  // from (pm2 restart, systemd, a server reboot, etc). Relying on process.cwd()
+  // caused already-uploaded images to silently "disappear" (404) whenever the
+  // process was restarted from a different working directory.
+  const uploadsRoot = getUploadsRootDir();
+  mkdirSync(getProductsUploadsDir(), { recursive: true });
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // Serve uploaded images at http://localhost:4000/uploads/products/<filename>
-  app.useStaticAssets(join(process.cwd(), "uploads"), { prefix: "/uploads/" });
+  app.useStaticAssets(uploadsRoot, { prefix: "/uploads/" });
+
+  // eslint-disable-next-line no-console
+  console.log(`Serving uploads from: ${uploadsRoot}`);
 
   const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3001")
     .split(",")
