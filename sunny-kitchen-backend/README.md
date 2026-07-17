@@ -128,3 +128,15 @@ Railway, Fly.io, a VPS, etc. Build with `npm run build`, run with
 > `src/products/products.controller.ts` to store files in something
 > persistent instead (S3, Cloudinary, or a mounted volume) before relying
 > on it in production.
+
+> **On a VPS with PM2/systemd: set `UPLOADS_DIR` to an absolute path
+> outside the project folder**, e.g. `UPLOADS_DIR=/var/www/sunnyskitchen-uploads`.
+> Without it, images are stored relative to `process.cwd()`, which is
+> whatever directory the Node process happened to be launched from — that
+> can silently change on a server reboot (`pm2 resurrect`), a crash
+> restart, or a fresh `git pull`/redeploy, making the app look in a new,
+> empty folder while the real files sit untouched in the old one. Result:
+> every previously uploaded photo starts 404ing with no obvious cause.
+> Pointing `UPLOADS_DIR` at a fixed absolute path outside the repo avoids
+> this entirely, and also protects the folder from `git clean`/`git reset
+> --hard` in your deploy script.

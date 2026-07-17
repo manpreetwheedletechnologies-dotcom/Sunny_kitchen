@@ -13,12 +13,13 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
-import { extname, join } from "path";
+import { extname } from "path";
 import { v4 as uuid } from "uuid";
 import { ProductsService } from "./products.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { AdminGuard } from "../auth/admin.guard";
+import { getProductsUploadsDir } from "../uploads-path";
 
 const ALLOWED_IMAGE_TYPES = /jpeg|jpg|png|webp|gif/;
 
@@ -62,7 +63,7 @@ export class ProductsController {
   @UseInterceptors(
     FileInterceptor("image", {
       storage: diskStorage({
-        destination: join(process.cwd(), "uploads", "products"),
+        destination: getProductsUploadsDir(),
         filename: (_req, file, cb) => {
           cb(null, `${uuid()}${extname(file.originalname).toLowerCase()}`);
         },
