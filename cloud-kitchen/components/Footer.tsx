@@ -55,7 +55,7 @@ export default function Footer() {
             </a>
             <br />
             <a href="tel:+919893955887" className="hover:text-forest">
-              +91 98939-55887
+              +91 98939 55887 /‎ +91 92328 20419
             </a>
           </p>
         </div>
