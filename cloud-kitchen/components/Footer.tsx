@@ -54,8 +54,8 @@ export default function Footer() {
               Sunnyskitchen8@gmail.com
             </a>
             <br />
-            <a href="tel:+919827050095" className="hover:text-forest">
-              +91 98270 50095
+            <a href="tel:+919893955887" className="hover:text-forest">
+              +91 98939-55887
             </a>
           </p>
         </div>
