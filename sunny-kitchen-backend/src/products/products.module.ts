@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { Product, ProductSchema } from "./schemas/product.schema";
 import { ProductsService } from "./products.service";
 import { ProductsController } from "./products.controller";
+import { UrbanPiperService } from "./urbanpiper.service";
 import { AuthModule } from "../auth/auth.module";
 
 @Module({
@@ -11,7 +12,7 @@ import { AuthModule } from "../auth/auth.module";
     AuthModule,
   ],
   controllers: [ProductsController],
-  providers: [ProductsService],
+  providers: [ProductsService, UrbanPiperService],
   exports: [ProductsService],
 })
 export class ProductsModule {}

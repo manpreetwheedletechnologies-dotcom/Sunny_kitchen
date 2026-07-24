@@ -279,6 +279,13 @@ export function adminDeleteProduct(token: string, id: string) {
   });
 }
 
+export function adminSyncUrbanPiperCatalog(token: string) {
+  return request<{ success: boolean; isSimulated: boolean; message: string; data?: any }>("/products/sync-urbanpiper", {
+    method: "POST",
+    token,
+  });
+}
+
 export async function adminUploadProductImage(
   token: string,
   id: string,

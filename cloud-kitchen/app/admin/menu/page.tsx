@@ -8,6 +8,7 @@ import {
   adminCreateProduct,
   adminDeleteProduct,
   adminUploadProductImage,
+  adminSyncUrbanPiperCatalog,
   resolveImageUrl,
   ApiError,
   type Product,
@@ -44,6 +45,7 @@ export default function AdminMenuPage() {
   const [syncing, setSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState("");
 
   const SYNC_STEPS = [
     "Establishing secure link with Petpooja catalog aggregator...",
@@ -54,29 +56,52 @@ export default function AdminMenuPage() {
     "Sync complete! 🚀 Your website's menu is now live on Swiggy & Zomato."
   ];
 
-  const handleSyncMenu = useCallback(() => {
+  const handleSyncMenu = useCallback(async () => {
+    if (!token) return;
     setSyncing(true);
     setShowSyncModal(true);
     setSyncStep(0);
+    setSyncStatusText(SYNC_STEPS[0]);
 
-    const runSync = (step: number) => {
-      if (step < SYNC_STEPS.length - 1) {
-        setTimeout(() => {
-          setSyncStep(step + 1);
-          runSync(step + 1);
-        }, 1000);
-      } else {
-        setTimeout(() => {
-          setSyncing(false);
+    try {
+      const syncPromise = adminSyncUrbanPiperCatalog(token);
+
+      const runSync = (step: number) => {
+        if (step < SYNC_STEPS.length - 2) {
           setTimeout(() => {
-            setShowSyncModal(false);
-          }, 1500);
-        }, 1200);
-      }
-    };
+            setSyncStep(step + 1);
+            setSyncStatusText(SYNC_STEPS[step + 1]);
+            runSync(step + 1);
+          }, 800);
+        } else {
+          syncPromise
+            .then((res) => {
+              setSyncStep(SYNC_STEPS.length - 1);
+              setSyncStatusText(res.message || SYNC_STEPS[SYNC_STEPS.length - 1]);
+              setSyncing(false);
+              setTimeout(() => {
+                setShowSyncModal(false);
+              }, 4000);
+            })
+            .catch((err) => {
+              setSyncStatusText(`Sync failed: ${err.message || "Unknown error"}`);
+              setSyncing(false);
+              setTimeout(() => {
+                setShowSyncModal(false);
+              }, 4000);
+            });
+        }
+      };
 
-    runSync(0);
-  }, [products]);
+      runSync(0);
+    } catch (err: any) {
+      setSyncStatusText(`Sync failed: ${err.message}`);
+      setSyncing(false);
+      setTimeout(() => {
+        setShowSyncModal(false);
+      }, 3000);
+    }
+  }, [products, token]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -488,7 +513,7 @@ export default function AdminMenuPage() {
             </div>
 
             <p className="font-display text-sm font-semibold text-forest mt-4 transition-all duration-300">
-              {SYNC_STEPS[syncStep]}
+              {syncStatusText || SYNC_STEPS[syncStep]}
             </p>
             
             <p className="text-xs text-forest/50 mt-2 font-body">

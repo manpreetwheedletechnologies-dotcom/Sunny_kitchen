@@ -90,6 +90,14 @@ export class OrdersController {
     return this.ordersService.simulate(body);
   }
 
+  @Post("webhook/urbanpiper")
+  async handleUrbanPiperWebhook(@Body() payload: any) {
+    if (payload && payload.order) {
+      return this.ordersService.createFromUrbanPiper(payload.order);
+    }
+    return { status: "ignored_event", message: "Webhook processed successfully." };
+  }
+
   // Public endpoint to poll order status without auth
   @Get("public/:id")
   async getPublicOrder(@Param("id") id: string) {
