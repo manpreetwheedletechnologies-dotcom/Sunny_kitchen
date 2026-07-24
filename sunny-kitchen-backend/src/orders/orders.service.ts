@@ -200,4 +200,99 @@ export class OrdersService {
       paymentStatus: PaymentStatus.PENDING,
     });
   }
+
+  async createFromUrbanPiper(upOrder: any) {
+    const details = upOrder.details || {};
+    const customer = upOrder.customer || {};
+    const deliveryAddress = upOrder.delivery_address || {};
+    const items = upOrder.items || [];
+
+    let source = OrderSource.WEBSITE;
+    const channel = String(details.channel || "").toLowerCase();
+    if (channel.includes("swiggy")) {
+      source = OrderSource.SWIGGY;
+    } else if (channel.includes("zomato")) {
+      source = OrderSource.ZOMATO;
+    }
+
+    const customerName = customer.name || "Platform Customer";
+    const phone = customer.phone || "0000000000";
+    const email = customer.email || undefined;
+    const address = [deliveryAddress.line_1, deliveryAddress.line_2]
+      .filter(Boolean)
+      .join(", ") || "Platform Delivery Address";
+
+    const verifiedItems: any[] = [];
+    let calculatedSubtotal = 0;
+
+    for (const item of items) {
+      let product: any = null;
+      if (item.merchant_id) {
+        try {
+          product = await this.productsService.findOne(item.merchant_id);
+        } catch {
+          // ignore
+        }
+      }
+
+      if (!product) {
+        const allProducts = await this.productsService.findAll();
+        product = allProducts.find(
+          (p) => p.name.toLowerCase() === String(item.title).toLowerCase()
+        );
+      }
+
+      const productId = product ? String(product._id) : "external_item";
+      const name = item.title || "Unknown Item";
+      const price = item.price || 0;
+      const qty = item.quantity || 1;
+
+      calculatedSubtotal += price * qty;
+      verifiedItems.push({
+        productId,
+        name,
+        price,
+        qty,
+      });
+
+      if (product) {
+        try {
+          await this.productsService.decrementStock(String(product._id), qty);
+        } catch {
+          // ignore
+        }
+      }
+    }
+
+    const orderNumber = details.ext_platforms?.[0]?.id || `UP-${details.id || Math.floor(1000 + Math.random() * 9000)}`;
+    const subtotal = calculatedSubtotal;
+    const deliveryFee = details.order_level_total_charges?.delivery_charges || 0;
+    const total = details.order_level_total_charges?.total || (subtotal + deliveryFee);
+
+    const order = await this.orderModel.create({
+      orderNumber,
+      customerName,
+      phone,
+      email,
+      address,
+      items: verifiedItems,
+      subtotal,
+      deliveryFee,
+      total,
+      paymentMethod: "upi",
+      status: OrderStatus.CONFIRMED,
+      paymentStatus: PaymentStatus.CONFIRMED,
+      source,
+    });
+
+    await this.customersService.updateFromOrder(
+      phone,
+      customerName,
+      email,
+      address,
+      source
+    );
+
+    return order;
+  }
 }

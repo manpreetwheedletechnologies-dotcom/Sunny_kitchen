@@ -16,6 +16,7 @@ import { diskStorage } from "multer";
 import { extname } from "path";
 import { v4 as uuid } from "uuid";
 import { ProductsService } from "./products.service";
+import { UrbanPiperService } from "./urbanpiper.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { AdminGuard } from "../auth/admin.guard";
@@ -25,7 +26,10 @@ const ALLOWED_IMAGE_TYPES = /jpeg|jpg|png|webp|gif/;
 
 @Controller("products")
 export class ProductsController {
-  constructor(private productsService: ProductsService) {}
+  constructor(
+    private productsService: ProductsService,
+    private urbanPiperService: UrbanPiperService
+  ) {}
 
   // Public — the storefront needs this to render the menu and stock state.
   @Get()
@@ -36,6 +40,13 @@ export class ProductsController {
   @Get(":id")
   findOne(@Param("id") id: string) {
     return this.productsService.findOne(id);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post("sync-urbanpiper")
+  async syncUrbanPiperCatalog() {
+    const products = await this.productsService.findAll();
+    return this.urbanPiperService.syncCatalog(products);
   }
 
   // Everything below is admin-only.
