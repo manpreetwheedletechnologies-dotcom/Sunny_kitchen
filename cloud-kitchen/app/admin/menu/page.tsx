@@ -42,6 +42,28 @@ export default function AdminMenuPage() {
   const [creating, setCreating] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
 
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editForm, setEditForm] = useState<{
+    name: string;
+    price: string;
+    stockCount: string;
+    isCombo: boolean;
+    category: string;
+    ingredients: string;
+    outOfStock: boolean;
+    imageFile: File | null;
+  }>({
+    name: "",
+    price: "",
+    stockCount: "20",
+    isCombo: false,
+    category: "Uncategorized",
+    ingredients: "",
+    outOfStock: false,
+    imageFile: null,
+  });
+  const [updating, setUpdating] = useState(false);
+
   const [syncing, setSyncing] = useState(false);
   const [syncStep, setSyncStep] = useState(0);
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -242,6 +264,52 @@ export default function AdminMenuPage() {
       setError(err instanceof ApiError ? err.message : "Couldn't add product");
     } finally {
       setCreating(false);
+    }
+  }
+
+  const handleStartEdit = (product: Product) => {
+    setEditingProduct(product);
+    setEditForm({
+      name: product.name,
+      price: String(product.price),
+      stockCount: String(product.stockCount),
+      isCombo: !!product.isCombo,
+      category: product.category || "Uncategorized",
+      ingredients: product.ingredients || "",
+      outOfStock: !!product.outOfStock,
+      imageFile: null,
+    });
+  };
+
+  async function handleUpdateProduct(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !editingProduct) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      const updated = await adminUpdateProduct(token, editingProduct._id, {
+        name: editForm.name,
+        price: Number(editForm.price),
+        stockCount: Number(editForm.stockCount),
+        isCombo: editForm.isCombo,
+        category: editForm.category,
+        ingredients: editForm.ingredients,
+        outOfStock: editForm.outOfStock,
+      });
+
+      let finalProduct = updated;
+      if (editForm.imageFile) {
+        finalProduct = await adminUploadProductImage(token, editingProduct._id, editForm.imageFile);
+      }
+
+      setProducts((prev) =>
+        prev.map((p) => (p._id === finalProduct._id ? finalProduct : p))
+      );
+      setEditingProduct(null);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't update product");
+    } finally {
+      setUpdating(false);
     }
   }
 
@@ -481,13 +549,22 @@ export default function AdminMenuPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => deleteProduct(p)}
-                      aria-label={`Delete ${p.name}`}
-                      className="focus-ring rounded-lg p-2 text-forest/40 transition hover:bg-tomato/10 hover:text-tomato"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => handleStartEdit(p)}
+                        aria-label={`Edit ${p.name}`}
+                        className="focus-ring rounded-lg p-2 text-forest/40 transition hover:bg-forest/10 hover:text-forest"
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        onClick={() => deleteProduct(p)}
+                        aria-label={`Delete ${p.name}`}
+                        className="focus-ring rounded-lg p-2 text-forest/40 transition hover:bg-tomato/10 hover:text-tomato"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -528,6 +605,153 @@ export default function AdminMenuPage() {
                 />
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg border-2 border-forest/15 bg-card rounded-3xl p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setEditingProduct(null)}
+              className="absolute top-4 right-4 text-forest/40 hover:text-forest text-xl font-bold p-2"
+              type="button"
+            >
+              ✕
+            </button>
+            <h3 className="font-display text-2xl font-bold text-forest mb-6 flex items-center gap-2">
+              <span>✏️ Edit Product</span>
+            </h3>
+
+            <form onSubmit={handleUpdateProduct} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Product Name</label>
+                <input
+                  required
+                  placeholder="Name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="focus-ring w-full rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Price (₹)</label>
+                  <input
+                    required
+                    type="number"
+                    min={0}
+                    placeholder="Price"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                    className="focus-ring w-full rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Category</label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                    className="focus-ring w-full rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Stock Count</label>
+                  <input
+                    required
+                    type="number"
+                    min={0}
+                    placeholder="Stock"
+                    value={editForm.stockCount}
+                    onChange={(e) => setEditForm({ ...editForm, stockCount: e.target.value })}
+                    className="focus-ring w-full rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Product Image</label>
+                  <div className="relative border-2 border-dashed border-forest/20 rounded-lg flex items-center justify-center bg-cream px-3 py-2 cursor-pointer hover:bg-cream/80 transition overflow-hidden h-[38px]">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) setEditForm({ ...editForm, imageFile: file });
+                      }}
+                    />
+                    {editForm.imageFile ? (
+                      <p className="text-xs text-forest font-semibold truncate w-full text-center">
+                        {editForm.imageFile.name}
+                      </p>
+                    ) : (
+                      <span className="text-xs text-forest/60 font-semibold truncate">
+                        📷 {editingProduct.imageUrl ? "Change Image" : "Upload Image"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold uppercase tracking-wider text-forest/60">Ingredients</label>
+                <input
+                  placeholder="Ingredients (e.g. Tomato, Cheese)"
+                  value={editForm.ingredients}
+                  onChange={(e) => setEditForm({ ...editForm, ingredients: e.target.value })}
+                  className="focus-ring w-full rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none"
+                />
+              </div>
+
+              <div className="flex gap-6 items-center pt-2">
+                <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.isCombo}
+                    onChange={(e) => setEditForm({ ...editForm, isCombo: e.target.checked })}
+                    className="accent-forest w-4 h-4 rounded"
+                  />
+                  Mark as Combo Deal
+                </label>
+
+                <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editForm.outOfStock}
+                    onChange={(e) => setEditForm({ ...editForm, outOfStock: e.target.checked })}
+                    className="accent-forest w-4 h-4 rounded"
+                  />
+                  Out of Stock
+                </label>
+              </div>
+
+              <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-forest/10">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="focus-ring rounded-xl border border-forest/20 px-5 py-2.5 font-display text-sm font-semibold text-forest transition hover:bg-forest/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updating}
+                  className="focus-ring rounded-xl bg-forest px-6 py-2.5 font-display text-sm font-bold text-cream transition hover:bg-forestDark disabled:opacity-60"
+                >
+                  {updating ? "Updating..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
