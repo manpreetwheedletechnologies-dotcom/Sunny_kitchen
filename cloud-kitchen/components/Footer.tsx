@@ -32,7 +32,7 @@ export default function Footer() {
           </p>
 
           <p className="mt-3 text-sm text-forest/70">
-            Open 07:00 AM - 11:00 AM daily
+            Open 07:00 AM - 09:00 PM daily
             <br />
             H.NO.29 Scheme 114 Part-1 Vijay Nagar,
             <br />
