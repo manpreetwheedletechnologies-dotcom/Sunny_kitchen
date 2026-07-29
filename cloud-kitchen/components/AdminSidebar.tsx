@@ -13,7 +13,8 @@ import {
   LogOut,
   ShoppingBag,
   Store,
-  MessageSquare
+  MessageSquare,
+  Wallet
 } from "lucide-react";
 import { clearAdminToken, getAdminRole } from "@/lib/admin-auth";
 import { useRouter } from "next/navigation";
@@ -40,6 +41,7 @@ const navigation = [
   { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { name: "Menu", href: "/admin/menu", icon: UtensilsCrossed },
   { name: "Orders", href: "/admin/orders", icon: Receipt },
+  { name: "Payments", href: "/admin/payments", icon: Wallet },
   { name: "Swiggy Hub", href: "/admin/swiggy", icon: SwiggyIcon },
   { name: "Zomato Hub", href: "/admin/zomato", icon: ZomatoIcon },
   { name: "Testimonials", href: "/admin/testimonials", icon: Users },
