@@ -1,24 +1,35 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import Razorpay = require("razorpay");
+import * as crypto from "crypto";
 import { Order, OrderDocument, OrderStatus, OrderSource, PaymentStatus } from "./schemas/order.schema";
 import { CreateOrderDto } from "./dto/create-order.dto";
+import { VerifyPaymentDto } from "./dto/verify-payment.dto";
 import { ProductsService } from "../products/products.service";
 import { MailService } from "../mail/mail.service";
 import { CustomersService } from "../customers/customers.service";
 import { LeadsService } from "../leads/leads.service";
+import { PaymentsService } from "../payments/payments.service";
+import { LogFailedPaymentDto } from "./dto/log-failed-payment.dto";
 
 const DELIVERY_FEE = 25;
 const FREE_DELIVERY_ABOVE = 299;
 
 @Injectable()
 export class OrdersService {
+  private razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID as string,
+    key_secret: process.env.RAZORPAY_KEY_SECRET as string,
+  });
+
   constructor(
     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
     private productsService: ProductsService,
     private mailService: MailService,
     private customersService: CustomersService,
-    private leadsService: LeadsService
+    private leadsService: LeadsService,
+    private paymentsService: PaymentsService
   ) {}
 
   async findAll(status?: OrderStatus, source?: OrderSource, search?: string) {
@@ -199,6 +210,113 @@ export class OrdersService {
       source: dto.source,
       paymentStatus: PaymentStatus.PENDING,
     });
+  }
+
+  // Called by the frontend right after the DB order is created, when
+  // paymentMethod is "upi". We NEVER trust an amount from the client —
+  // we always price the Razorpay order off the order that's already saved
+  // in our own database.
+  async createRazorpayOrder(orderId: string) {
+    const order = await this.findOne(orderId);
+
+    if (order.paymentStatus === PaymentStatus.CONFIRMED) {
+      throw new BadRequestException("This order has already been paid for.");
+    }
+
+    const rzpOrder = await this.razorpay.orders.create({
+      amount: Math.round(order.total * 100), // paise
+      currency: "INR",
+      receipt: order.orderNumber,
+      notes: { orderId: String(order._id) },
+    });
+
+    order.razorpayOrderId = rzpOrder.id;
+    await order.save();
+
+    // Log this payment attempt right away — this way even abandoned
+    // checkouts (customer never completes payment) show up in the
+    // dashboard, not just successful ones.
+    await this.paymentsService.recordCreated({
+      orderId: String(order._id),
+      orderNumber: order.orderNumber,
+      razorpayOrderId: rzpOrder.id,
+      amount: order.total,
+      currency: "INR",
+    });
+
+    return {
+      razorpayOrderId: rzpOrder.id,
+      amount: rzpOrder.amount,
+      currency: rzpOrder.currency,
+      keyId: process.env.RAZORPAY_KEY_ID,
+    };
+  }
+
+  // Called by the frontend after Razorpay's checkout popup returns a
+  // successful response. We recompute the signature ourselves with our
+  // secret key — this is the only trustworthy way to know a payment
+  // actually succeeded (never trust the frontend's word for it).
+  async verifyRazorpayPayment(orderId: string, dto: VerifyPaymentDto) {
+    const order = await this.findOne(orderId);
+
+    if (order.razorpayOrderId !== dto.razorpay_order_id) {
+      throw new BadRequestException("Order/payment mismatch");
+    }
+
+    const body = `${dto.razorpay_order_id}|${dto.razorpay_payment_id}`;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET as string)
+      .update(body)
+      .digest("hex");
+
+    if (expectedSignature !== dto.razorpay_signature) {
+      throw new BadRequestException("Payment verification failed");
+    }
+
+    order.paymentStatus = PaymentStatus.CONFIRMED;
+    order.status = OrderStatus.CONFIRMED;
+    order.razorpayPaymentId = dto.razorpay_payment_id;
+    await order.save();
+
+    // Fetch the payment from Razorpay to know which instrument (upi, card,
+    // netbanking...) the customer actually used — nice to have in the
+    // dashboard, but never critical to the verification itself.
+    let method: string | undefined;
+    try {
+      const payment = await this.razorpay.payments.fetch(dto.razorpay_payment_id);
+      method = payment?.method;
+    } catch {
+      // non-fatal — dashboard will just show the method as blank
+    }
+
+    await this.paymentsService.markCaptured(
+      dto.razorpay_order_id,
+      dto.razorpay_payment_id,
+      method
+    );
+
+    void this.mailService.sendOrderStatusEmail(order);
+
+    return order;
+  }
+
+  // Called by the frontend's payment.failed handler in Razorpay's
+  // checkout.js, so failed attempts also show up in the Payments dashboard
+  // (not just successful ones).
+  async logFailedPayment(orderId: string, dto: LogFailedPaymentDto) {
+    const order = await this.findOne(orderId);
+
+    await this.paymentsService.markFailed(
+      dto.razorpay_order_id ?? order.razorpayOrderId,
+      {
+        razorpayPaymentId: dto.razorpay_payment_id,
+        errorCode: dto.error_code,
+        errorReason: dto.error_reason,
+        errorDescription: dto.error_description,
+      }
+    );
+
+    return { logged: true };
   }
 
   async createFromUrbanPiper(upOrder: any) {

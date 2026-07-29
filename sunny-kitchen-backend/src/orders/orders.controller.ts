@@ -12,6 +12,8 @@ import { OrdersService } from "./orders.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderStatusDto } from "./dto/update-order-status.dto";
 import { UpdatePaymentStatusDto } from "./dto/update-payment-status.dto";
+import { VerifyPaymentDto } from "./dto/verify-payment.dto";
+import { LogFailedPaymentDto } from "./dto/log-failed-payment.dto";
 import { AdminGuard } from "../auth/admin.guard";
 import { OrderStatus, OrderSource, PaymentStatus } from "./schemas/order.schema";
 
@@ -23,6 +25,28 @@ export class OrdersController {
   @Post()
   create(@Body() dto: CreateOrderDto) {
     return this.ordersService.create(dto);
+  }
+
+  // Public — frontend calls this right after creating the order, to get
+  // a Razorpay order it can open the checkout popup with.
+  @Post(":id/razorpay-order")
+  createRazorpayOrder(@Param("id") id: string) {
+    return this.ordersService.createRazorpayOrder(id);
+  }
+
+  // Public — frontend calls this once Razorpay's popup returns a result.
+  // Server re-verifies the signature; this is what actually marks the
+  // order as paid, never the frontend by itself.
+  @Post(":id/verify-payment")
+  verifyPayment(@Param("id") id: string, @Body() dto: VerifyPaymentDto) {
+    return this.ordersService.verifyRazorpayPayment(id, dto);
+  }
+
+  // Public — frontend calls this from Razorpay's payment.failed event, so
+  // failed attempts are also visible in the admin Payments dashboard.
+  @Post(":id/payment-failed")
+  logFailedPayment(@Param("id") id: string, @Body() dto: LogFailedPaymentDto) {
+    return this.ordersService.logFailedPayment(id, dto);
   }
 
   @Post("seed")

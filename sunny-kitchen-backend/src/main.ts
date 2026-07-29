@@ -24,7 +24,7 @@ async function bootstrap() {
   // eslint-disable-next-line no-console
   console.log(`Serving uploads from: ${uploadsRoot}`);
 
-  const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:3001")
+  const corsOrigins = (process.env.CORS_ORIGIN ?? "http://localhost:4001")
     .split(",")
     .map((o) => o.trim());
 

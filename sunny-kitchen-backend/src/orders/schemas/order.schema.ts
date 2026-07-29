@@ -102,6 +102,13 @@ export class Order {
     default: OrderSource.WEBSITE,
   })
   source: OrderSource;
+
+  // Razorpay tracking fields
+  @Prop()
+  razorpayOrderId?: string;
+
+  @Prop()
+  razorpayPaymentId?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

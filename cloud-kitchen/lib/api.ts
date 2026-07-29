@@ -61,6 +61,8 @@ export type Order = {
   paymentStatus: PaymentStatus;
   source: OrderSource;
   createdAt: string;
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
 };
 
 export type Customer = {
@@ -170,6 +172,68 @@ export function createOrder(payload: {
   });
 }
 
+export type PaymentRecordStatus = "created" | "captured" | "failed";
+
+export type Payment = {
+  _id: string;
+  order: string | { _id: string; orderNumber: string; customerName: string; total: number };
+  orderNumber: string;
+  razorpayOrderId: string;
+  razorpayPaymentId?: string;
+  amount: number;
+  currency: string;
+  status: PaymentRecordStatus;
+  method?: string;
+  contact?: string;
+  email?: string;
+  errorCode?: string;
+  errorReason?: string;
+  errorDescription?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function createRazorpayOrder(orderId: string) {
+  return request<{
+    razorpayOrderId: string;
+    amount: number;
+    currency: string;
+    keyId: string;
+  }>(`/orders/${orderId}/razorpay-order`, {
+    method: "POST",
+  });
+}
+
+export function verifyPayment(
+  orderId: string,
+  payload: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }
+) {
+  return request<Order>(`/orders/${orderId}/verify-payment`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function logFailedPayment(
+  orderId: string,
+  payload: {
+    razorpay_order_id?: string;
+    razorpay_payment_id?: string;
+    error_code?: string;
+    error_description?: string;
+    error_reason?: string;
+  }
+) {
+  return request<{ logged: boolean }>(`/orders/${orderId}/payment-failed`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function simulateOrder(payload: {
   source: OrderSource;
   customerName: string;
@@ -205,6 +269,11 @@ export function adminLogin(email: string, password: string) {
 
 export function adminGetDashboardStats(token: string) {
   return request<any>("/orders/analytics", { token });
+}
+
+export function adminGetPayments(token: string, orderId?: string) {
+  const qs = orderId ? `?orderId=${orderId}` : "";
+  return request<Payment[]>(`/payments${qs}`, { token });
 }
 
 export function adminGetOrders(

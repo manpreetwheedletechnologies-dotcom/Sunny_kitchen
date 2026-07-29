@@ -2,17 +2,79 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import Script from "next/script";
 import { useCart } from "@/lib/cart-context";
 import { DELIVERY_FEE, FREE_DELIVERY_ABOVE } from "@/lib/menu";
-import { createOrder, getPublicOrder, ApiError, type Order, type PaymentStatus } from "@/lib/api";
+import {
+  createOrder,
+  createRazorpayOrder,
+  verifyPayment,
+  getPublicOrder,
+  ApiError,
+  type Order,
+  type PaymentStatus,
+} from "@/lib/api";
 
 type PaymentMethod = "cod" | "upi";
+
+// Common country codes with their expected national-number digit length,
+// used both for the dropdown and for validating the phone number.
+const COUNTRIES = [
+  { code: "+91", name: "India", digits: 10 },
+  { code: "+1", name: "USA / Canada", digits: 10 },
+  { code: "+44", name: "United Kingdom", digits: 10 },
+  { code: "+971", name: "UAE", digits: 9 },
+  { code: "+61", name: "Australia", digits: 9 },
+  { code: "+65", name: "Singapore", digits: 8 },
+  { code: "+966", name: "Saudi Arabia", digits: 9 },
+  { code: "+974", name: "Qatar", digits: 8 },
+];
+
+function isValidPhoneForCountry(countryCode: string, phone: string): boolean {
+  const country = COUNTRIES.find((c) => c.code === countryCode);
+  if (!country) return phone.length >= 6 && phone.length <= 15;
+
+  if (countryCode === "+91") {
+    // Indian mobile numbers: exactly 10 digits, starting 6-9.
+    return /^[6-9]\d{9}$/.test(phone);
+  }
+
+  return phone.length === country.digits;
+}
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
+// Actively waits for the Razorpay script to be ready, instead of trusting
+// a one-time onLoad callback (which can miss firing on client-side
+// back/forward navigation since the browser may have already cached the
+// script tag). Checks immediately, then polls briefly.
+function waitForRazorpay(timeoutMs = 6000): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (typeof window !== "undefined" && window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (typeof window !== "undefined" && window.Razorpay) {
+        clearInterval(interval);
+        resolve(true);
+      } else if (Date.now() - start > timeoutMs) {
+        clearInterval(interval);
+        resolve(false);
+      }
+    }, 150);
+  });
+}
 
 export default function CheckoutPage() {
   const { lines, subtotal, clearCart, ready } = useCart();
   const [payment, setPayment] = useState<PaymentMethod>("cod");
-  const [userPaymentStatus, setUserPaymentStatus] = useState<"User_Done" | "User_Not_Done" | null>(null);
+  const [razorpayReady, setRazorpayReady] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [pollingStatus, setPollingStatus] = useState<PaymentStatus>("Pending");
   const [placing, setPlacing] = useState(false);
@@ -24,6 +86,7 @@ export default function CheckoutPage() {
 
   const [form, setForm] = useState({
     name: "",
+    countryCode: "+91",
     phone: "",
     email: "",
     address: "",
@@ -66,18 +129,33 @@ export default function CheckoutPage() {
     localStorage.removeItem("promo_coupon");
   }
 
+  function finishSuccessfulOrder(result: Order) {
+    setOrder(result);
+    setPollingStatus(result.paymentStatus);
+    clearCart();
+    localStorage.removeItem("promo_coupon");
+    localStorage.removeItem("promo_source");
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!userPaymentStatus) {
-      setError("Please confirm your payment status by clicking Done or Not Done below the QR code.");
+
+    if (!isValidPhoneForCountry(form.countryCode, form.phone)) {
+      const country = COUNTRIES.find((c) => c.code === form.countryCode);
+      setError(
+        `Please enter a valid phone number for ${country?.name || "the selected country"} (${country?.digits || 6}-15 digits expected).`
+      );
       return;
     }
+
     setError(null);
     setPlacing(true);
     try {
+      // Step 1: create the order in our DB (paymentStatus stays Pending
+      // until Razorpay confirms it, for upi).
       const result = await createOrder({
         customerName: form.name,
-        phone: form.phone,
+        phone: `${form.countryCode}${form.phone}`,
         email: form.email || undefined,
         address: form.address,
         notes: form.notes || undefined,
@@ -88,15 +166,85 @@ export default function CheckoutPage() {
           price: l.price,
           qty: l.qty,
         })),
-        paymentStatus: userPaymentStatus,
+        paymentStatus: "Pending",
         discountCode: appliedCoupon || undefined,
         source: (source as any) || undefined,
       });
-      setOrder(result);
-      setPollingStatus(result.paymentStatus);
-      clearCart();
-      localStorage.removeItem("promo_coupon");
-      localStorage.removeItem("promo_source");
+
+      if (payment === "cod") {
+        finishSuccessfulOrder(result);
+        setPlacing(false);
+        return;
+      }
+
+      // Step 2: make sure Razorpay's script has actually finished loading.
+      const razorpayLoaded = await waitForRazorpay();
+      if (!razorpayLoaded) {
+        setError(
+          `Payment gateway couldn't load. Please refresh the page and try again — your order ${result.orderNumber} is saved.`
+        );
+        setPlacing(false);
+        return;
+      }
+
+      // Step 3: ask our backend for a Razorpay order priced off this DB order's total.
+      const rzpOrder = await createRazorpayOrder(result._id);
+
+      // Step 3: open Razorpay's checkout popup.
+      const rzp = new window.Razorpay({
+        key: rzpOrder.keyId,
+        amount: rzpOrder.amount,
+        currency: rzpOrder.currency,
+        order_id: rzpOrder.razorpayOrderId,
+        name: "Sunny's Kitchen",
+        description: `Order ${result.orderNumber}`,
+        prefill: {
+          name: form.name,
+          email: form.email,
+          contact: `${form.countryCode}${form.phone}`,
+          ...(form.countryCode === "+91" ? { method: "upi" } : {}),
+        },
+        theme: { color: "#c2410c" },
+        config: {
+          display: {
+            hide: [{ method: "emi" }],
+          },
+        },
+        handler: async function (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) {
+          try {
+            // Step 4: server verifies the signature — this is what actually confirms payment.
+            const verified = await verifyPayment(result._id, response);
+            finishSuccessfulOrder(verified);
+          } catch (err) {
+            setError(
+              `Payment succeeded but we couldn't confirm it automatically. Please contact us with your order number ${result.orderNumber}.`
+            );
+          } finally {
+            setPlacing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setPlacing(false);
+            setError(
+              `Payment was cancelled. Your order ${result.orderNumber} is saved — you can retry payment or contact us.`
+            );
+          },
+        },
+      });
+
+      rzp.on("payment.failed", function () {
+        setPlacing(false);
+        setError(
+          `Payment failed. Your order ${result.orderNumber} is saved — you can retry payment or contact us.`
+        );
+      });
+
+      rzp.open();
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -105,7 +253,6 @@ export default function CheckoutPage() {
           "Couldn't reach the kitchen's server. Please check your connection and try again."
         );
       }
-    } finally {
       setPlacing(false);
     }
   }
@@ -125,9 +272,17 @@ export default function CheckoutPage() {
     return () => clearInterval(interval);
   }, [order, pollingStatus]);
 
+  const razorpayScript = (
+    <Script
+      src="https://checkout.razorpay.com/v1/checkout.js"
+      onLoad={() => setRazorpayReady(true)}
+    />
+  );
+
   if (!ready) {
     return (
       <main className="mx-auto max-w-3xl px-5 py-14 md:px-8 md:py-20">
+        {razorpayScript}
         <p className="font-display text-sm font-semibold text-forest/60">
           Loading…
         </p>
@@ -138,6 +293,7 @@ export default function CheckoutPage() {
   if (order) {
     return (
       <main className="mx-auto max-w-2xl px-5 py-16 text-center md:px-8 md:py-24">
+        {razorpayScript}
         <p className="text-5xl">🎉</p>
         <p className="mt-4 font-display text-sm font-bold uppercase tracking-widest text-tomato">
           Order confirmed
@@ -248,6 +404,7 @@ export default function CheckoutPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-14 md:px-8 md:py-20">
+      {razorpayScript}
       <p className="font-display text-sm font-bold uppercase tracking-widest text-tomato">
         Almost there
       </p>
@@ -267,40 +424,55 @@ export default function CheckoutPage() {
           onSubmit={handleSubmit}
           className="space-y-5 rounded-3xl border-2 border-forest/15 bg-card p-6 md:p-8"
         >
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block">
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
-                Name
-              </span>
-              <input
-                required
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
-                placeholder="Your name"
-              />
-            </label>
-            <label className="block">
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
-                Phone
-              </span>
+          <label className="block">
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
+              Name
+            </span>
+            <input
+              required
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
+              placeholder="Your name"
+            />
+          </label>
+
+          <label className="block">
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
+              Phone
+            </span>
+            <div className="mt-2 flex gap-2">
+              <select
+                value={form.countryCode}
+                onChange={(e) => {
+                  setForm({ ...form, countryCode: e.target.value, phone: "" });
+                }}
+                className="focus-ring w-32 shrink-0 rounded-xl border-2 border-forest/15 bg-cream px-2 py-3 text-forest outline-none"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.code} {c.name}
+                  </option>
+                ))}
+              </select>
               <input
                 required
                 type="tel"
-                pattern="[0-9]{10}"
-                maxLength={10}
-                title="Please enter exactly 10 digits"
+                maxLength={
+                  COUNTRIES.find((c) => c.code === form.countryCode)?.digits ?? 15
+                }
+                title="Please enter a valid phone number for the selected country"
                 value={form.phone}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, "");
                   setForm({ ...form, phone: val });
                 }}
-                className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
-                placeholder="10-digit phone number"
+                className="focus-ring w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
+                placeholder="Phone number"
               />
-            </label>
-          </div>
+            </div>
+          </label>
 
           <label className="block">
             <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
@@ -368,52 +540,18 @@ export default function CheckoutPage() {
                     : "border-forest/15 text-forest/70 hover:border-forest/40"
                 }`}
               >
-                📱 UPI
+                📱 Pay Online
               </button>
             </div>
-            
-            {/* QR Code and Actions */}
-            <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-forest/20 bg-cream/50 p-6">
-              <p className="font-display text-sm font-bold uppercase tracking-widest text-forest mb-4 text-center">
-                Scan to Pay
-              </p>
-              <div className="w-48 h-48 relative rounded-xl overflow-hidden shadow-md border-4 border-white mb-6 bg-white flex items-center justify-center">
-                <Image
-                  src="/qr_code.png"
-                  alt="Payment QR Code"
-                  width={180}
-                  height={180}
-                  className="object-contain"
-                />
+
+            {payment === "upi" && (
+              <div className="mt-6 rounded-2xl border-2 border-dashed border-forest/20 bg-cream/50 p-6 text-center">
+                <p className="text-sm text-forest/80">
+                  Clicking <span className="font-bold">Place Order</span> below will open a
+                  secure Razorpay window where you can pay via UPI, card, or netbanking.
+                </p>
               </div>
-              <p className="text-sm text-forest/80 mb-4 text-center">
-                Please scan the QR code above to complete your payment, then confirm below.
-              </p>
-              <div className="flex gap-4 w-full">
-                <button
-                  type="button"
-                  onClick={() => setUserPaymentStatus("User_Done")}
-                  className={`flex-1 focus-ring rounded-xl border-2 px-4 py-3 text-center font-display text-sm font-bold transition ${
-                    userPaymentStatus === "User_Done"
-                      ? "border-forest bg-forest text-cream"
-                      : "border-forest/20 text-forest hover:border-forest/40 bg-white"
-                  }`}
-                >
-                  ✅ Done
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUserPaymentStatus("User_Not_Done")}
-                  className={`flex-1 focus-ring rounded-xl border-2 px-4 py-3 text-center font-display text-sm font-bold transition ${
-                    userPaymentStatus === "User_Not_Done"
-                      ? "border-tomato bg-tomato text-cream"
-                      : "border-tomato/20 text-tomato hover:border-tomato/40 bg-white"
-                  }`}
-                >
-                  ❌ Not Done
-                </button>
-              </div>
-            </div>
+            )}
           </div>
         </form>
 
