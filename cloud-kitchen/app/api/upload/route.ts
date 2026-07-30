@@ -47,11 +47,3 @@ export async function POST(req: NextRequest) {
   const imageUrl = `/uploads/products/${filename}`;
   return NextResponse.json({ imageUrl });
 }
-
-// Next's default body size limit for the App Router is much larger than this
-// already, but keeping the explicit config documents the intent.
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
