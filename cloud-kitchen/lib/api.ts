@@ -1,12 +1,17 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-/** Turns a relative "/uploads/products/xyz.jpg" path from the backend into a full URL. */
+const ASSETS_URL = process.env.NEXT_PUBLIC_ASSETS_URL ?? "";
+
+/** Images live in this app's own public/uploads folder. In production this
+ *  resolves relative to the current domain automatically. For local
+ *  development, set NEXT_PUBLIC_ASSETS_URL to the live site so images
+ *  load straight from there instead of expecting them on your own disk. */
 export function resolveImageUrl(imageUrl?: string | null): string | null {
   if (!imageUrl) return null;
   if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
     return imageUrl;
   }
-  return `${API_URL}${imageUrl}`;
+  return `${ASSETS_URL}${imageUrl}`;
 }
 
 export type Product = {
@@ -355,6 +360,18 @@ export function adminSyncUrbanPiperCatalog(token: string) {
   });
 }
 
+// Replaces the existing `adminUploadProductImage` function in lib/api.ts.
+// Old version sent the file straight to the NestJS backend
+// (`${API_URL}/products/${id}/image`), which saved it into the backend's
+// own uploads folder.
+//
+// New version: the file is uploaded to THIS Next.js app's own
+// `/api/upload` route (see app/api/upload/route.ts), which saves it into
+// this app's public/uploads/products folder and returns a relative path.
+// That path is then sent to the backend as a normal PATCH, using the
+// already-existing adminUpdateProduct — the backend only ever stores a
+// string, it never touches the file itself.
+
 export async function adminUploadProductImage(
   token: string,
   id: string,
@@ -363,24 +380,28 @@ export async function adminUploadProductImage(
   const formData = new FormData();
   formData.append("image", file);
 
-  const res = await fetch(`${API_URL}/products/${id}/image`, {
+  // Same-origin call — goes to this Next.js app, NOT the backend.
+  const uploadRes = await fetch("/api/upload", {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
 
-  if (!res.ok) {
-    let message = `Upload failed with status ${res.status}`;
+  if (!uploadRes.ok) {
+    let message = `Upload failed with status ${uploadRes.status}`;
     try {
-      const body = await res.json();
+      const body = await uploadRes.json();
       message = body.message ?? message;
     } catch {
       // ignore non-JSON error body
     }
-    throw new ApiError(Array.isArray(message) ? message.join(", ") : message, res.status);
+    throw new ApiError(message, uploadRes.status);
   }
 
-  return res.json() as Promise<Product>;
+  const { imageUrl } = (await uploadRes.json()) as { imageUrl: string };
+
+  // Now tell the backend to save that path against the product — this
+  // reuses the existing adminUpdateProduct function further up this file.
+  return adminUpdateProduct(token, id, { imageUrl });
 }
 
 // Customers
