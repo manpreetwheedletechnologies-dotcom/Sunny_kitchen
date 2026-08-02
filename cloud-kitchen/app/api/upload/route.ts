@@ -4,14 +4,20 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { randomUUID } from "crypto";
 
-// Saves an uploaded product image into THIS app's own public/uploads/products
-// folder (not the backend's). Returns a relative path that Next.js will
-// serve directly at that same path, e.g. /uploads/products/<file>.
-// This keeps images on the same origin as the site, so no NEXT_PUBLIC_API_URL
-// / CORS / reverse-proxy path juggling is needed to display them.
+// Saves an uploaded product image into THIS app's own
+// public/sunny-uploads/products folder (not the backend's). Returns a
+// relative path that Next.js will serve directly at that same path, e.g.
+// /sunny-uploads/products/<file>.
+//
+// NOTE: intentionally NOT using a plain "/uploads/" prefix — this server
+// hosts several other apps that already claim "/uploads/" in the shared
+// Apache reverse-proxy config, and Apache's ProxyPass matches in file
+// order (first match wins), so a generic "/uploads/" here would silently
+// get captured by one of those other apps' rules. "/sunny-uploads/" is
+// unique to this project, so it always falls through to this Next.js app.
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -29,14 +35,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (file.size > MAX_SIZE_BYTES) {
-    return NextResponse.json({ message: "Image must be under 5MB" }, { status: 400 });
+    return NextResponse.json({ message: "Image must be under 10MB" }, { status: 400 });
   }
 
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
   const filename = `${randomUUID()}.${ext}`;
 
   // process.cwd() is the Next.js project root when run via `next start`/`next dev`.
-  const uploadsDir = join(process.cwd(), "public", "uploads", "products");
+  const uploadsDir = join(process.cwd(), "public", "sunny-uploads", "products");
   if (!existsSync(uploadsDir)) {
     await mkdir(uploadsDir, { recursive: true });
   }
@@ -44,6 +50,6 @@ export async function POST(req: NextRequest) {
   const bytes = Buffer.from(await file.arrayBuffer());
   await writeFile(join(uploadsDir, filename), bytes);
 
-  const imageUrl = `/uploads/products/${filename}`;
+  const imageUrl = `/sunny-uploads/products/${filename}`;
   return NextResponse.json({ imageUrl });
 }
