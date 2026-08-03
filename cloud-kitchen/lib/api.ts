@@ -3,10 +3,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 /** Turns a relative "/uploads/products/xyz.jpg" path from the backend into a full URL. */
 export function resolveImageUrl(imageUrl?: string | null): string | null {
   if (!imageUrl) return null;
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    return imageUrl;
-  }
-  return `${API_URL}${imageUrl}`;
+  return imageUrl;
 }
 
 export type Product = {
