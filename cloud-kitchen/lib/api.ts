@@ -3,6 +3,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 /** Turns a relative "/uploads/products/xyz.jpg" path from the backend into a full URL. */
 export function resolveImageUrl(imageUrl?: string | null): string | null {
   if (!imageUrl) return null;
+  if (
+    imageUrl.startsWith("/sunny-uploads") ||
+    imageUrl.includes("localhost")
+  ) {
+    const path = imageUrl.includes("localhost")
+      ? imageUrl.substring(imageUrl.indexOf("/sunny-uploads"))
+      : imageUrl;
+
+    return `https://sunnyskitchen.kitchen${path}`;
+  }
+
   return imageUrl;
 }
 
