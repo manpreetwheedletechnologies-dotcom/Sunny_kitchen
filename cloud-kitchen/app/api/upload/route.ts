@@ -4,20 +4,16 @@ import { existsSync } from "fs";
 import { join } from "path";
 import { randomUUID } from "crypto";
 
-// Saves an uploaded product image into THIS app's own
-// public/sunny-uploads/products folder (not the backend's). Returns a
-// relative path that Next.js will serve directly at that same path, e.g.
-// /sunny-uploads/products/<file>.
-//
-// NOTE: intentionally NOT using a plain "/uploads/" prefix — this server
-// hosts several other apps that already claim "/uploads/" in the shared
-// Apache reverse-proxy config, and Apache's ProxyPass matches in file
-// order (first match wins), so a generic "/uploads/" here would silently
-// get captured by one of those other apps' rules. "/sunny-uploads/" is
-// unique to this project, so it always falls through to this Next.js app.
+// Saves an uploaded product image into a dedicated storage folder (NOT
+// inside public/ — see app/sunny-uploads/[...path]/route.ts for why: files
+// added to public/ after the server has started aren't served until the
+// process restarts, since Next.js snapshots that folder's contents at
+// startup. This route just writes the file; the [...path] route handler
+// reads it fresh from disk on every request, so no restart is ever needed.
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const STORAGE_ROOT = join(process.cwd(), "sunny-uploads-storage");
 
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
@@ -41,8 +37,7 @@ export async function POST(req: NextRequest) {
   const ext = file.name.includes(".") ? file.name.split(".").pop() : "jpg";
   const filename = `${randomUUID()}.${ext}`;
 
-  // process.cwd() is the Next.js project root when run via `next start`/`next dev`.
-  const uploadsDir = join(process.cwd(), "public", "sunny-uploads", "products");
+  const uploadsDir = join(STORAGE_ROOT, "products");
   if (!existsSync(uploadsDir)) {
     await mkdir(uploadsDir, { recursive: true });
   }

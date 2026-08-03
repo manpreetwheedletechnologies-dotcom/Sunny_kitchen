@@ -1,17 +1,12 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
-const ASSETS_URL = process.env.NEXT_PUBLIC_ASSETS_URL ?? "";
-
-/** Images live in this app's own public/uploads folder. In production this
- *  resolves relative to the current domain automatically. For local
- *  development, set NEXT_PUBLIC_ASSETS_URL to the live site so images
- *  load straight from there instead of expecting them on your own disk. */
+/** Turns a relative "/uploads/products/xyz.jpg" path from the backend into a full URL. */
 export function resolveImageUrl(imageUrl?: string | null): string | null {
   if (!imageUrl) return null;
   if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
     return imageUrl;
   }
-  return `${ASSETS_URL}${imageUrl}`;
+  return `${API_URL}${imageUrl}`;
 }
 
 export type Product = {
