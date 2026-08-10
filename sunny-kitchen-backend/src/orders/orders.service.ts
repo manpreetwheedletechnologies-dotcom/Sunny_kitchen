@@ -12,6 +12,7 @@ import { CustomersService } from "../customers/customers.service";
 import { LeadsService } from "../leads/leads.service";
 import { PaymentsService } from "../payments/payments.service";
 import { LogFailedPaymentDto } from "./dto/log-failed-payment.dto";
+import { ShadowfaxService } from "../delivery/shadowfax.service";
 
 const DELIVERY_FEE = 25;
 const FREE_DELIVERY_ABOVE = 299;
@@ -29,7 +30,8 @@ export class OrdersService {
     private mailService: MailService,
     private customersService: CustomersService,
     private leadsService: LeadsService,
-    private paymentsService: PaymentsService
+    private paymentsService: PaymentsService,
+    private shadowfaxService: ShadowfaxService
   ) {}
 
   async findAll(status?: OrderStatus, source?: OrderSource, search?: string) {
@@ -159,7 +161,7 @@ export class OrdersService {
       source
     );
 
-    void this.mailService.sendOrderStatusEmail(order);
+    // void this.mailService.sendOrderStatusEmail(order);
 
     return order;
   }
@@ -300,9 +302,12 @@ export class OrdersService {
     return order;
   }
 
-  // Called by the frontend's payment.failed handler in Razorpay's
-  // checkout.js, so failed attempts also show up in the Payments dashboard
-  // (not just successful ones).
+  // Called by the frontend whenever a payment attempt doesn't succeed —
+  // either Razorpay reported an explicit failure, or the customer closed
+  // the checkout popup without paying. Either way: log it for the Payments
+  // dashboard, restore the stock we reserved at order-creation time, and
+  // delete the order — we never want an unpaid order sitting in the
+  // Orders list or db.
   async logFailedPayment(orderId: string, dto: LogFailedPaymentDto) {
     const order = await this.findOne(orderId);
 
@@ -315,6 +320,31 @@ export class OrdersService {
         errorDescription: dto.error_description,
       }
     );
+
+    // Don't touch orders that somehow already got confirmed in the
+    // meantime (e.g. a late/duplicate failure callback after success).
+    if (order.paymentStatus === PaymentStatus.CONFIRMED) {
+      return { logged: true };
+    }
+
+    // Either way, the stock we reserved at order-creation time should be
+    // released — this order isn't going to be fulfilled as-is.
+    for (const item of order.items) {
+      await this.productsService.incrementStock(item.productId, item.qty);
+    }
+
+    if (dto.error_reason === "cancelled_by_user") {
+      // Customer explicitly closed the checkout popup without paying —
+      // there was never a real payment attempt, so don't keep a record.
+      await this.orderModel.findByIdAndDelete(orderId).exec();
+    } else {
+      // A genuine payment attempt was made and Razorpay reported failure
+      // (card declined, bank error, etc). Keep the order visible so the
+      // customer/admin can see it happened and retry — just mark it as
+      // failed instead of silently deleting it.
+      order.paymentStatus = PaymentStatus.USER_NOT_DONE;
+      await order.save();
+    }
 
     return { logged: true };
   }
@@ -412,5 +442,93 @@ export class OrdersService {
     );
 
     return order;
+  }
+  // Admin-triggered from the dashboard — sends a "did your order arrive
+  // okay?" email for a delivered order. Not automatic, unlike the
+  // regular status-change emails.
+  async sendFeedbackEmail(id: string) {
+    const order = await this.findOne(id);
+    await this.mailService.sendFeedbackRequestEmail(order);
+    return { sent: true };
+  }
+
+  // Admin-triggered — kitchen has finished preparing the order and wants
+  // Shadowfax to assign a rider to pick it up. Deliberately manual (not
+  // fired automatically on a status change) so we never summon a rider
+  // before the food is actually ready.
+  async requestDelivery(id: string) {
+    const order = await this.findOne(id);
+    const result = await this.shadowfaxService.createDeliveryRequest(order);
+
+    if (result.awb) {
+      order.shadowfaxAwb = result.awb;
+      order.deliveryStatus = "requested";
+      order.deliveryRequestedAt = new Date();
+
+      // Fetch the customer-facing tracking link right away so it's ready
+      // to show/email without the customer needing to wait or refresh.
+      const trackingUrl = await this.shadowfaxService.getTrackingUrl(result.awb);
+      if (trackingUrl) order.deliveryTrackingUrl = trackingUrl;
+
+      await order.save();
+      void this.mailService.sendOrderStatusEmail(order);
+    }
+
+    return { awb: result.awb };
+  }
+
+  // Admin-triggered "🔄 Refresh tracking link" — Shadowfax sometimes
+  // doesn't have a customer_track_url ready immediately after order
+  // creation (e.g. while status is still "new", before a rider is
+  // assigned). This re-fetches it without creating a duplicate delivery
+  // request, so admin can just retry once a rider's been assigned.
+  async refreshTrackingUrl(id: string) {
+    const order = await this.findOne(id);
+    if (!order.shadowfaxAwb) {
+      throw new Error("This order has no delivery request yet");
+    }
+
+    const trackingUrl = await this.shadowfaxService.getTrackingUrl(order.shadowfaxAwb);
+    if (trackingUrl) {
+      order.deliveryTrackingUrl = trackingUrl;
+      await order.save();
+    }
+
+    return { trackingUrl: trackingUrl ?? null };
+  }
+
+  // Called by Shadowfax's Push Callback whenever a shipment's status
+  // changes (assigned, out for delivery, delivered, etc). Public route —
+  // Shadowfax's server calls this directly, not our admin panel.
+  async handleShadowfaxWebhook(payload: any) {
+    const order = await this.orderModel
+      .findOne({ orderNumber: payload.order_id })
+      .exec();
+    if (!order) return { received: true }; // unknown/unrelated order — ignore quietly
+
+    order.deliveryStatus = payload.event;
+    if (payload.rider_name) order.riderName = payload.rider_name;
+    if (payload.rider_contact) order.riderPhone = payload.rider_contact;
+
+    // Mirror Shadowfax's delivery progress onto our own order status so
+    // the existing OrderStatusTracker on the dashboard/confirmation page
+    // reflects it automatically.
+    if (payload.event === "ofd" || payload.event === "assigned_for_delivery") {
+      order.status = OrderStatus.OUT_FOR_DELIVERY;
+    }
+    if (payload.event === "delivered") {
+      order.status = OrderStatus.DELIVERED;
+    }
+
+    await order.save();
+    void this.mailService.sendOrderStatusEmail(order);
+    return { received: true };
+  }
+
+  // Public — checked from checkout before payment, so we never accept an
+  // order for an area Shadowfax can't actually deliver to.
+  async checkServiceability(pincode: string) {
+    const serviceable = await this.shadowfaxService.checkServiceability(pincode);
+    return { serviceable };
   }
 }

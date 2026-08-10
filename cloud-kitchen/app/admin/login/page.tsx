@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import SunIcon from "@/components/SunIcon";
 import { adminLogin, ApiError } from "@/lib/api";
 import { setAdminToken, setAdminRole } from "@/lib/admin-auth";
 
-export default function AdminLoginPage() {
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const sessionExpired = searchParams.get("expired") === "1";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +54,11 @@ export default function AdminLoginPage() {
         onSubmit={handleSubmit}
         className="mt-8 space-y-4 rounded-3xl border-2 border-forest/15 bg-card p-6"
       >
+        {sessionExpired && !error && (
+          <p className="rounded-xl border-2 border-sun/40 bg-sun/10 px-4 py-2 font-display text-sm font-semibold text-sunDeep">
+            Your session expired — please log in again.
+          </p>
+        )}
         {error && (
           <p className="rounded-xl border-2 border-tomato/40 bg-tomato/10 px-4 py-2 font-display text-sm font-semibold text-tomato">
             {error}
@@ -91,5 +99,13 @@ export default function AdminLoginPage() {
         </button>
       </form>
     </main>
+  );
+}
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }

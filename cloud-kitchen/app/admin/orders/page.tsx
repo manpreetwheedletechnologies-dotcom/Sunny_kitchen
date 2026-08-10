@@ -7,6 +7,9 @@ import {
   adminGetOrders,
   adminUpdateOrderStatus,
   adminUpdateOrderPaymentStatus,
+  adminSendFeedbackEmail,
+  adminRequestDelivery,
+  adminRefreshTracking,
   ApiError,
   getProducts,
   simulateOrder,
@@ -25,6 +28,8 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   delivered: "Delivered",
   cancelled: "Cancelled",
 };
+
+
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABELS) as OrderStatus[];
 
@@ -167,6 +172,38 @@ function OrdersContent() {
     }
   }
 
+  async function sendFeedbackEmail(order: Order) {
+    if (!token) return;
+    try {
+      await adminSendFeedbackEmail(token, order._id);
+      alert(`Feedback email sent to ${order.email || "customer"}.`);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to send feedback email");
+    }
+  }
+
+  async function requestDelivery(order: Order) {
+    if (!token) return;
+    try {
+      const res = await adminRequestDelivery(token, order._id);
+      alert(res.awb ? `Delivery requested — AWB: ${res.awb}` : "Delivery requested.");
+      loadOrders(token);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to request delivery");
+    }
+  }
+
+  async function refreshTracking(order: Order) {
+    if (!token) return;
+    try {
+      const res = await adminRefreshTracking(token, order._id);
+      alert(res.trackingUrl ? "Tracking link is ready now!" : "Still not available yet — try again in a bit.");
+      loadOrders(token);
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to refresh tracking link");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center flex-wrap gap-4">
@@ -262,6 +299,49 @@ function OrdersContent() {
                       <p className="text-sm italic text-forest/50 mt-1">
                         &ldquo;{order.notes}&rdquo;
                       </p>
+                    )}
+                    <OrderStatusTracker status={order.status} />
+                    {(order.status === "preparing" || order.status === "confirmed") &&
+                      !order.shadowfaxAwb && (
+                        <button
+                          onClick={() => requestDelivery(order)}
+                          className="focus-ring mt-3 mr-2 rounded-full border-2 border-tomato/40 bg-tomato/10 px-4 py-1.5 font-display text-xs font-bold uppercase tracking-wide text-tomato transition hover:bg-tomato hover:text-cream active:scale-95"
+                        >
+                          🛵 Request Delivery Partner
+                        </button>
+                      )}
+                    <DeliveryRequestStatus order={order} />
+                    {order.riderName && (
+                      <p className="mt-2 text-xs text-forest/60">
+                        Rider: <span className="font-semibold text-forest">{order.riderName}</span>
+                        {order.riderPhone && <> · {order.riderPhone}</>}
+                      </p>
+                    )}
+                    {order.deliveryTrackingUrl && (
+                      <a
+                        href={order.deliveryTrackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-block text-xs font-semibold text-tomato underline"
+                      >
+                        📍 Track this delivery ↗
+                      </a>
+                    )}
+                    {order.shadowfaxAwb && !order.deliveryTrackingUrl && (
+                      <button
+                        onClick={() => refreshTracking(order)}
+                        className="mt-1 text-xs font-semibold text-forest/50 underline transition hover:text-forest"
+                      >
+                        🔄 Refresh tracking link
+                      </button>
+                    )}
+                    {order.status === "delivered" && order.email && (
+                      <button
+                        onClick={() => sendFeedbackEmail(order)}
+                        className="focus-ring mt-3 rounded-full border-2 border-forest/30 bg-cream/50 px-4 py-1.5 font-display text-xs font-bold uppercase tracking-wide text-forest transition hover:bg-forest hover:text-cream active:scale-95"
+                      >
+                        📧 Ask if order arrived okay
+                      </button>
                     )}
                   </div>
                   <select
@@ -488,4 +568,118 @@ export default function AdminOrdersPage() {
   );
 }
 
+// Raw event ids Shadowfax sends (both our own "requested" placeholder and
+// their actual status_ids from the warehouse order-state list in their docs).
+const DELIVERY_STATUS_LABELS: Record<string, { label: string; tone: "waiting" | "ok" | "bad" }> = {
+  requested: { label: "⏳ Waiting for a rider to accept", tone: "waiting" },
+  new: { label: "⏳ Waiting for a rider to accept", tone: "waiting" },
+  received_from_client_warehouse: { label: "✅ Rider picked up the order", tone: "ok" },
+  assigned_for_delivery: { label: "✅ Accepted — rider assigned", tone: "ok" },
+  ofd: { label: "🛵 Out for delivery", tone: "ok" },
+  delivered: { label: "🎉 Delivered", tone: "ok" },
+  cancelled_by_customer: { label: "❌ Cancelled", tone: "bad" },
+  on_hold: { label: "⚠️ On hold", tone: "bad" },
+  lost: { label: "⚠️ Lost in transit", tone: "bad" },
+  nc: { label: "⚠️ Rider couldn't reach customer", tone: "bad" },
+  na: { label: "⚠️ Delivery attempt failed", tone: "bad" },
+  rto: { label: "↩️ Returning to kitchen", tone: "bad" },
+  rto_d: { label: "↩️ Returned to kitchen", tone: "bad" },
+};
 
+function timeAgo(dateStr?: string): string {
+  if (!dateStr) return "";
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m ago`;
+}
+
+function DeliveryRequestStatus({ order }: { order: Order }) {
+  // Force a re-render every 30s so "X min ago" stays fresh without a full page reload.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => forceTick((n) => n + 1), 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!order.deliveryStatus) return null;
+
+  const info = DELIVERY_STATUS_LABELS[order.deliveryStatus] ?? {
+    label: order.deliveryStatus,
+    tone: "waiting" as const,
+  };
+  const toneClass =
+    info.tone === "ok" ? "text-forest" : info.tone === "bad" ? "text-tomato" : "text-forest/60";
+
+  return (
+    <p className={`mt-1 text-xs font-semibold ${toneClass}`}>
+      {info.label}
+      {order.deliveryRequestedAt && (
+        <span className="ml-1 font-normal text-forest/40">
+          · requested {timeAgo(order.deliveryRequestedAt)}
+        </span>
+      )}
+    </p>
+  );
+}
+
+const TRACKER_STEPS: { key: OrderStatus; label: string; icon: string }[] = [
+  { key: "confirmed", label: "Confirmed", icon: "🧾" },
+  { key: "preparing", label: "Preparing", icon: "👩‍🍳" },
+  { key: "out_for_delivery", label: "On the way", icon: "🛵" },
+  { key: "delivered", label: "Delivered", icon: "🎉" },
+];
+
+function OrderStatusTracker({ status }: { status: OrderStatus }) {
+  if (status === "cancelled") {
+    return (
+      <div className="mt-3 inline-block rounded-lg bg-forest/5 px-3 py-1.5 font-display text-xs font-bold uppercase tracking-wide text-forest/40 line-through">
+        Order Cancelled
+      </div>
+    );
+  }
+
+  // "pending" (payment not yet confirmed) sits before the first step.
+  const currentIndex =
+    status === "pending" ? -1 : TRACKER_STEPS.findIndex((s) => s.key === status);
+
+  return (
+    <div className="mt-4 flex items-center max-w-md">
+      {TRACKER_STEPS.map((step, i) => {
+        const done = i <= currentIndex;
+        const isLast = i === TRACKER_STEPS.length - 1;
+        return (
+          <div key={step.key} className="flex flex-1 items-center last:flex-none">
+            <div className="flex flex-col items-center gap-1">
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs transition ${
+                  done
+                    ? "border-forest bg-forest text-cream"
+                    : "border-forest/20 bg-cream text-forest/30"
+                }`}
+              >
+                {done ? "✓" : step.icon}
+              </div>
+              <span
+                className={`whitespace-nowrap font-display text-[10px] font-bold uppercase tracking-wide ${
+                  done ? "text-forest" : "text-forest/30"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            {!isLast && (
+              <div
+                className={`mx-1 h-0.5 flex-1 rounded transition ${
+                  i < currentIndex ? "bg-forest" : "bg-forest/15"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

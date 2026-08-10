@@ -109,6 +109,25 @@ export class Order {
 
   @Prop()
   razorpayPaymentId?: string;
+
+  // Shadowfax delivery tracking
+  @Prop()
+  shadowfaxAwb?: string; // unique tracking ID Shadowfax returns on order creation
+
+  @Prop()
+  deliveryTrackingUrl?: string; // customer-facing link — safe to share directly
+
+  @Prop()
+  deliveryRequestedAt?: Date; // when we asked Shadowfax to assign a rider
+
+  @Prop()
+  deliveryStatus?: string; // raw event id from Shadowfax (assigned_for_delivery, ofd, delivered...)
+
+  @Prop()
+  riderName?: string;
+
+  @Prop()
+  riderPhone?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

@@ -13,6 +13,8 @@ import {
   ApiError,
   type Order,
   type PaymentStatus,
+  logFailedPayment,
+  checkPincodeServiceability,
 } from "@/lib/api";
 
 type PaymentMethod = "cod" | "upi";
@@ -73,12 +75,18 @@ function waitForRazorpay(timeoutMs = 6000): Promise<boolean> {
 
 export default function CheckoutPage() {
   const { lines, subtotal, clearCart, ready } = useCart();
-  const [payment, setPayment] = useState<PaymentMethod>("cod");
+  const [payment, setPayment] = useState<PaymentMethod>("upi");
   const [razorpayReady, setRazorpayReady] = useState(false);
   const [order, setOrder] = useState<Order | null>(null);
   const [pollingStatus, setPollingStatus] = useState<PaymentStatus>("Pending");
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(null), 5000);
+    return () => clearTimeout(timer);
+  }, [error]);
 
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState("");
@@ -90,8 +98,38 @@ export default function CheckoutPage() {
     phone: "",
     email: "",
     address: "",
+    pincode: "",
     notes: "",
   });
+
+  // "checking" | "yes" | "no" | null (not enough digits entered yet)
+  const [serviceability, setServiceability] = useState<
+    "checking" | "yes" | "no" | null
+  >(null);
+
+  useEffect(() => {
+    if (form.pincode.length !== 6) {
+      setServiceability(null);
+      return;
+    }
+    let cancelled = false;
+    setServiceability("checking");
+    const timer = setTimeout(() => {
+      checkPincodeServiceability(form.pincode)
+        .then((res) => {
+          if (!cancelled) setServiceability(res.serviceable ? "yes" : "no");
+        })
+        .catch(() => {
+          // If the check itself fails, don't block checkout over it —
+          // treat as unknown/serviceable and let order creation proceed.
+          if (!cancelled) setServiceability("yes");
+        });
+    }, 400); // small debounce so it doesn't fire on every keystroke
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [form.pincode]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -140,6 +178,21 @@ export default function CheckoutPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (form.name.trim().length < 2) {
+      setError("Please enter your name.");
+      return;
+    }
+
+    if (form.address.trim().length < 5) {
+      setError("Please enter your delivery address.");
+      return;
+    }
+
+    if (form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim())) {
+      setError("Please enter a valid email address, or leave it blank.");
+      return;
+    }
+
     if (!isValidPhoneForCountry(form.countryCode, form.phone)) {
       const country = COUNTRIES.find((c) => c.code === form.countryCode);
       setError(
@@ -148,16 +201,27 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!/^\d{6}$/.test(form.pincode)) {
+      setError("Please enter a valid 6-digit pincode.");
+      return;
+    }
+
+    if (serviceability === "no") {
+      setError("Sorry, we don't currently deliver to this pincode.");
+      return;
+    }
+
     setError(null);
     setPlacing(true);
     try {
       // Step 1: create the order in our DB (paymentStatus stays Pending
       // until Razorpay confirms it, for upi).
+      const fullAddress = `${form.address.trim()} - ${form.pincode}`;
       const result = await createOrder({
         customerName: form.name,
         phone: `${form.countryCode}${form.phone}`,
         email: form.email || undefined,
-        address: form.address,
+        address: fullAddress,
         notes: form.notes || undefined,
         paymentMethod: payment,
         items: lines.map((l) => ({
@@ -171,11 +235,6 @@ export default function CheckoutPage() {
         source: (source as any) || undefined,
       });
 
-      if (payment === "cod") {
-        finishSuccessfulOrder(result);
-        setPlacing(false);
-        return;
-      }
 
       // Step 2: make sure Razorpay's script has actually finished loading.
       const razorpayLoaded = await waitForRazorpay();
@@ -230,9 +289,10 @@ export default function CheckoutPage() {
         modal: {
           ondismiss: function () {
             setPlacing(false);
-            setError(
-              `Payment was cancelled. Your order ${result.orderNumber} is saved — you can retry payment or contact us.`
-            );
+            setError("Payment was cancelled. Please try again when you're ready.");
+            logFailedPayment(result._id, {
+              error_reason: "cancelled_by_user",
+            }).catch(() => { });
           },
         },
       });
@@ -257,6 +317,12 @@ export default function CheckoutPage() {
     }
   }
 
+  const [deliveryInfo, setDeliveryInfo] = useState<{
+    trackingUrl?: string;
+    riderName?: string;
+    riderPhone?: string;
+  }>({});
+
   useEffect(() => {
     if (!order) return;
     const interval = setInterval(async () => {
@@ -265,12 +331,19 @@ export default function CheckoutPage() {
         if (res.paymentStatus !== pollingStatus) {
           setPollingStatus(res.paymentStatus);
         }
+        if (res.deliveryTrackingUrl && res.deliveryTrackingUrl !== deliveryInfo.trackingUrl) {
+          setDeliveryInfo({
+            trackingUrl: res.deliveryTrackingUrl,
+            riderName: res.riderName,
+            riderPhone: res.riderPhone,
+          });
+        }
       } catch (e) {
         // ignore polling errors
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [order, pollingStatus]);
+  }, [order, pollingStatus, deliveryInfo.trackingUrl]);
 
   const razorpayScript = (
     <Script
@@ -330,6 +403,27 @@ export default function CheckoutPage() {
             )}
           </div>
         </div>
+        {deliveryInfo.trackingUrl && (
+          <div className="mx-auto mt-4 w-fit rounded-2xl border-2 border-tomato/30 bg-tomato/5 px-8 py-4">
+            <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/60">
+              Delivery
+            </p>
+            {deliveryInfo.riderName && (
+              <p className="mt-1 text-sm text-forest/70">
+                {deliveryInfo.riderName}
+                {deliveryInfo.riderPhone && <> · {deliveryInfo.riderPhone}</>}
+              </p>
+            )}
+            <a
+              href={deliveryInfo.trackingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-block rounded-full bg-tomato px-6 py-2 font-display text-sm font-bold text-cream transition hover:bg-forest"
+            >
+              📍 Track your delivery
+            </a>
+          </div>
+        )}
         <div className="mx-auto mt-4 w-fit rounded-2xl border-2 border-forest/15 bg-card px-8 py-4 min-w-[280px]">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-forest/60">
             Payment Method
@@ -339,7 +433,7 @@ export default function CheckoutPage() {
               ? "Cash on delivery"
               : "UPI — pay on delivery link sent by SMS"}
           </p>
-          
+
           {order.discountAmount && order.discountAmount > 0 ? (
             <>
               <p className="mt-3 font-display text-xs font-bold uppercase tracking-widest text-forest/60">
@@ -413,8 +507,18 @@ export default function CheckoutPage() {
       </h1>
 
       {error && (
-        <div className="mt-6 rounded-2xl border-2 border-tomato/40 bg-tomato/10 px-5 py-4 font-display text-sm font-semibold text-tomato">
-          {error}
+        <div className="fixed right-4 top-4 z-50 max-w-sm animate-in fade-in slide-in-from-top-4 duration-300 sm:right-6 sm:top-6">
+          <div className="flex items-start gap-3 rounded-2xl border-2 border-tomato/40 bg-cream px-5 py-4 shadow-2xl">
+            <span className="text-lg leading-none">⚠️</span>
+            <p className="flex-1 font-display text-sm font-semibold text-tomato">{error}</p>
+            <button
+              onClick={() => setError(null)}
+              aria-label="Dismiss"
+              className="text-tomato/60 transition hover:text-tomato"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       )}
 
@@ -422,6 +526,7 @@ export default function CheckoutPage() {
         <form
           id="checkout-form"
           onSubmit={handleSubmit}
+          noValidate
           className="space-y-5 rounded-3xl border-2 border-forest/15 bg-card p-6 md:p-8"
         >
           <label className="block">
@@ -504,6 +609,37 @@ export default function CheckoutPage() {
 
           <label className="block">
             <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
+              Pincode
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              required
+              pattern="\d{6}"
+              maxLength={6}
+              title="Please enter a valid 6-digit pincode"
+              value={form.pincode}
+              onChange={(e) =>
+                setForm({ ...form, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) })
+              }
+              className="focus-ring mt-2 w-full rounded-xl border-2 border-forest/15 bg-cream px-4 py-3 text-forest outline-none placeholder:text-forest/30"
+              placeholder="452010"
+            />
+            {serviceability === "checking" && (
+              <p className="mt-1.5 text-xs text-forest/50">Checking delivery availability...</p>
+            )}
+            {serviceability === "yes" && (
+              <p className="mt-1.5 text-xs font-semibold text-forest">✅ We deliver here</p>
+            )}
+            {serviceability === "no" && (
+              <p className="mt-1.5 text-xs font-semibold text-tomato">
+                😔 Sorry, we don't deliver to this pincode yet
+              </p>
+            )}
+          </label>
+
+          <label className="block">
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
               Delivery notes (optional)
             </span>
             <input
@@ -519,32 +655,11 @@ export default function CheckoutPage() {
             <span className="font-display text-xs font-bold uppercase tracking-widest text-forest/70">
               Payment method
             </span>
-            <div className="mt-2 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPayment("cod")}
-                className={`focus-ring rounded-xl border-2 px-4 py-3 text-left font-display text-sm font-bold transition ${
-                  payment === "cod"
-                    ? "border-forest bg-forest text-cream"
-                    : "border-forest/15 text-forest/70 hover:border-forest/40"
-                }`}
-              >
-                💵 Cash on delivery
-              </button>
-              <button
-                type="button"
-                onClick={() => setPayment("upi")}
-                className={`focus-ring rounded-xl border-2 px-4 py-3 text-left font-display text-sm font-bold transition ${
-                  payment === "upi"
-                    ? "border-forest bg-forest text-cream"
-                    : "border-forest/15 text-forest/70 hover:border-forest/40"
-                }`}
-              >
-                📱 Pay Online
-              </button>
+            <div className="mt-2 rounded-xl border-2 border-forest bg-forest px-4 py-3 text-left font-display text-sm font-bold text-cream">
+              📱 Pay Online
             </div>
 
-            {payment === "upi" && (
+            {true && (
               <div className="mt-6 rounded-2xl border-2 border-dashed border-forest/20 bg-cream/50 p-6 text-center">
                 <p className="text-sm text-forest/80">
                   Clicking <span className="font-bold">Place Order</span> below will open a
@@ -634,7 +749,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             form="checkout-form"
-            disabled={placing}
+            disabled={placing || serviceability === "no"}
             className="focus-ring mt-6 w-full rounded-full bg-tomato px-6 py-3 font-display text-sm font-bold text-cream transition hover:bg-forest disabled:opacity-60"
           >
             {placing ? "Placing order…" : `Place Order · ₹${total}`}
