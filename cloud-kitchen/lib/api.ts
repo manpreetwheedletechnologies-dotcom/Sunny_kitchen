@@ -1,3 +1,5 @@
+import { clearAdminToken } from "./admin-auth";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 /** Turns a relative "/uploads/products/xyz.jpg" path from the backend into a full URL. */
@@ -71,6 +73,12 @@ export type Order = {
   createdAt: string;
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
+  shadowfaxAwb?: string;
+  deliveryTrackingUrl?: string;
+  deliveryRequestedAt?: string;
+  deliveryStatus?: string;
+  riderName?: string;
+  riderPhone?: string;
 };
 
 export type Customer = {
@@ -142,6 +150,17 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    // Token expired/invalid — force a clean logout instead of leaving the
+    // admin stuck on a page silently throwing "invalid token" on every
+    // action. Only applies to requests that actually sent a token (public
+    // pages hitting 401 for other reasons shouldn't trigger this).
+    if (res.status === 401 && token && typeof window !== "undefined") {
+      clearAdminToken();
+      if (!window.location.pathname.startsWith("/admin/login")) {
+        window.location.href = "/admin/login?expired=1";
+      }
+    }
+
     let message = `Request failed with status ${res.status}`;
     try {
       const body = await res.json();
@@ -323,7 +342,13 @@ export function adminUpdateOrderPaymentStatus(
 }
 
 export function getPublicOrder(id: string) {
-  return request<{ status: OrderStatus; paymentStatus: PaymentStatus }>(`/orders/public/${id}`);
+  return request<{
+    status: OrderStatus;
+    paymentStatus: PaymentStatus;
+    deliveryTrackingUrl?: string;
+    riderName?: string;
+    riderPhone?: string;
+  }>(`/orders/public/${id}`);
 }
 
 export function adminCreateProduct(
@@ -537,4 +562,31 @@ export function adminDeleteTestimonial(token: string, id: string) {
     method: "DELETE",
     token,
   });
+}
+
+export function adminSendFeedbackEmail(token: string, id: string) {
+  return request<{ sent: boolean }>(`/orders/${id}/send-feedback-email`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function adminRequestDelivery(token: string, id: string) {
+  return request<{ awb: string | null }>(`/orders/${id}/request-delivery`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function adminRefreshTracking(token: string, id: string) {
+  return request<{ trackingUrl: string | null }>(`/orders/${id}/refresh-tracking`, {
+    method: "POST",
+    token,
+  });
+}
+
+export function checkPincodeServiceability(pincode: string) {
+  return request<{ serviceable: boolean }>(
+    `/orders/check-serviceability?pincode=${pincode}`
+  );
 }

@@ -54,4 +54,16 @@ export class ProductsService {
     await product.save();
     return product;
   }
+
+  /** Used when an order's payment is cancelled/failed — puts the reserved
+   *  stock back, since decrementStock() already ran at order-creation time. */
+  async incrementStock(id: string, qty: number) {
+    const product = await this.productModel.findById(id).exec();
+    if (!product) return; // product may have been deleted since — nothing to restore
+    product.stockCount += qty;
+    if (product.stockCount > 0) {
+      product.outOfStock = false;
+    }
+    await product.save();
+  }
 }

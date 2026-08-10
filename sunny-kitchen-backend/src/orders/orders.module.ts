@@ -9,6 +9,7 @@ import { MailModule } from "../mail/mail.module";
 import { CustomersModule } from "../customers/customers.module";
 import { LeadsModule } from "../leads/leads.module";
 import { PaymentsModule } from "../payments/payments.module";
+import { DeliveryModule } from "../delivery/delivery.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { PaymentsModule } from "../payments/payments.module";
     CustomersModule,
     LeadsModule,
     PaymentsModule,
+    DeliveryModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

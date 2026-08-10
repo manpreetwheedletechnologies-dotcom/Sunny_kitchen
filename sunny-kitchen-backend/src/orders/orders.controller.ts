@@ -129,7 +129,19 @@ export class OrdersController {
     return {
       status: order.status,
       paymentStatus: order.paymentStatus,
+      deliveryTrackingUrl: order.deliveryTrackingUrl,
+      riderName: order.riderName,
+      riderPhone: order.riderPhone,
     };
+  }
+
+  // Public — checkout calls this as soon as the customer finishes typing
+  // their pincode, before payment. Must stay ABOVE the ":id" route below —
+  // otherwise "check-serviceability" gets matched as an :id value instead
+  // and hits that route's AdminGuard.
+  @Get("check-serviceability")
+  checkServiceability(@Query("pincode") pincode: string) {
+    return this.ordersService.checkServiceability(pincode);
   }
 
   @UseGuards(AdminGuard)
@@ -165,5 +177,35 @@ export class OrdersController {
   @Patch(":id/payment-status")
   updatePaymentStatus(@Param("id") id: string, @Body() dto: UpdatePaymentStatusDto) {
     return this.ordersService.updatePaymentStatus(id, dto.paymentStatus);
+  }
+  // Admin-only — button on the dashboard for a delivered order, sends a
+  // "did your order arrive okay?" email on demand.
+  @UseGuards(AdminGuard)
+  @Post(":id/send-feedback-email")
+  sendFeedbackEmail(@Param("id") id: string) {
+    return this.ordersService.sendFeedbackEmail(id);
+  }
+
+  // Admin-only — dashboard button, fired once the kitchen has food ready
+  // and wants Shadowfax to assign a rider for pickup.
+  @UseGuards(AdminGuard)
+  @Post(":id/request-delivery")
+  requestDelivery(@Param("id") id: string) {
+    return this.ordersService.requestDelivery(id);
+  }
+
+  // Admin-only — retries fetching the tracking link (Shadowfax sometimes
+  // doesn't have one ready right after order creation).
+  @UseGuards(AdminGuard)
+  @Post(":id/refresh-tracking")
+  refreshTrackingUrl(@Param("id") id: string) {
+    return this.ordersService.refreshTrackingUrl(id);
+  }
+
+  // Public — Shadowfax's own server calls this automatically on every
+  // delivery status change. No AdminGuard: it's not us calling it.
+  @Post("shadowfax-webhook")
+  shadowfaxWebhook(@Body() body: any) {
+    return this.ordersService.handleShadowfaxWebhook(body);
   }
 }
