@@ -15,7 +15,7 @@ const KITCHEN = {
   // recognizes 110009/560077/560007 as serviceable for order creation —
   // override via env for testing so the real address never needs
   // touching. Leave this env var unset in production.
-  pincode: Number(process.env.SHADOWFAX_TEST_PICKUP_PINCODE) || 560007,
+  pincode: 452010,
 };
 
 // Known-serviceable pincodes near our kitchen (Vijay Nagar, Indore),
