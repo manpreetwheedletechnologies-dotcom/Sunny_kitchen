@@ -37,6 +37,20 @@ export default function RootLayout({
           })(window,document,'script','dataLayer','GTM-PRD9DSV4');`}
         </Script>
         {/* End Google Tag Manager */}
+
+        {/* Google tag (gtag.js) */}
+        <Script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=G-P0T7TWX6DZ"
+          strategy="afterInteractive"
+        />
+        <Script id="gtag-init" strategy="afterInteractive">
+          {`window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-P0T7TWX6DZ');`}
+        </Script>
+        {/* End Google tag (gtag.js) */}
       </head>
       <body className="font-body bg-cream text-ink antialiased">
         {/* Google Tag Manager (noscript) */}
