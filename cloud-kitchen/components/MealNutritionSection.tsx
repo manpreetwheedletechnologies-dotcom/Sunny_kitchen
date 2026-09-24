@@ -51,7 +51,7 @@ function NutritionTable({ foods }: { foods: NutritionItem[] }) {
     <div className="hidden overflow-x-auto rounded-2xl border border-forest/15 bg-white shadow-sm md:block">
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="bg-forest font-display text-[11px] font-bold uppercase tracking-wider text-cream">
+          <tr className="bg-gradient-to-r from-forest to-forest/90 font-display text-[11px] font-bold uppercase tracking-wider text-cream">
             <th className="px-4 py-3">Food item</th>
             {NUTRIENTS.map((n) => (
               <th key={n.key} className="px-3 py-3 text-center">
@@ -66,7 +66,7 @@ function NutritionTable({ foods }: { foods: NutritionItem[] }) {
           {foods.map((f, i) => (
             <tr
               key={`${f.foodItem}-${i}`}
-              className="border-t border-forest/10 even:bg-cream/40"
+              className="border-t border-forest/10 transition even:bg-cream/40 hover:bg-sun/15"
             >
               <td className="px-4 py-3">
                 <span className="flex items-center gap-2 font-display font-bold text-forest">
@@ -84,7 +84,7 @@ function NutritionTable({ foods }: { foods: NutritionItem[] }) {
               </td>
               <td className="px-4 py-3">
                 {f.benefit && (
-                  <span className="inline-block rounded-full bg-sun/30 px-3 py-1 font-display text-xs font-bold text-forest">
+                  <span className="inline-block whitespace-nowrap rounded-full bg-sun/30 px-3 py-1 font-display text-xs font-bold text-forest">
                     ✨ {f.benefit}
                   </span>
                 )}
@@ -147,16 +147,24 @@ function MealBlock({ meal }: { meal: Product }) {
   return (
     <article className="overflow-hidden rounded-[2rem] border-2 border-forest/15 bg-card shadow-md">
       {/* Header: photo + title + price */}
-      <div className="grid md:grid-cols-[280px_1fr]">
-        <div className="relative h-56 bg-cream md:h-full">
+      <div className="grid md:grid-cols-[360px_1fr]">
+        {/* object-contain => poori image dikhegi, crop nahi hogi */}
+        <div className="relative aspect-square w-full bg-gradient-to-br from-sun/30 via-cream to-white md:aspect-auto md:min-h-[380px]">
           {img ? (
-            <Image src={img} alt={meal.name} fill className="object-cover" />
+            <Image
+              src={img}
+              alt={meal.name}
+              fill
+              sizes="(min-width: 768px) 360px, 100vw"
+              className="object-contain p-4 drop-shadow-xl"
+              priority
+            />
           ) : (
             <div className="flex h-full items-center justify-center text-7xl">
               {meal.emoji}
             </div>
           )}
-          <span className="absolute left-3 top-3 rounded-full bg-forest px-3 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-cream shadow">
+          <span className="absolute left-4 top-4 rounded-full bg-forest px-3 py-1 font-display text-[11px] font-bold uppercase tracking-wide text-cream shadow">
             🥗 Meal Nutrition
           </span>
         </div>
@@ -197,7 +205,9 @@ function MealBlock({ meal }: { meal: Product }) {
                     <div className="h-2.5 overflow-hidden rounded-full bg-forest/10">
                       <div
                         className={`h-full rounded-full ${b.bar} transition-all`}
-                        style={{ width: `${Math.max(6, (b.avg / (LEVELS.length - 1)) * 100)}%` }}
+                        style={{
+                          width: `${Math.max(6, (b.avg / (LEVELS.length - 1)) * 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -206,10 +216,15 @@ function MealBlock({ meal }: { meal: Product }) {
             </div>
           )}
 
-          <div className="mt-auto flex items-center justify-between gap-3 pt-6">
-            <span className="rounded-lg bg-sun px-4 py-1.5 font-display text-lg font-extrabold text-forest">
-              ₹{meal.price}
-            </span>
+          <div className="mt-auto flex items-center justify-between gap-3 border-t border-dashed border-forest/15 pt-5">
+            <div>
+              <p className="font-display text-[11px] font-bold uppercase tracking-widest text-forest/50">
+                Per plate
+              </p>
+              <span className="font-display text-3xl font-extrabold text-forest">
+                ₹{meal.price}
+              </span>
+            </div>
             <AddToCart
               id={meal._id}
               name={meal.name}
@@ -247,14 +262,20 @@ function MealBlock({ meal }: { meal: Product }) {
 export default function MealNutritionSection({
   meals,
   showMenuLink = false,
+  limit,
 }: {
   meals: Product[];
   showMenuLink?: boolean;
+  /** Home page par limit={1} do; Menu page par mat do (sab dikhenge). */
+  limit?: number;
 }) {
   if (meals.length === 0) return null;
 
+  const shown = limit ? meals.slice(0, limit) : meals;
+  const hasMore = shown.length < meals.length;
+
   return (
-    <section id="meal-nutrition" className="mt-14 scroll-mt-24">
+    <section id="meal-nutrition" className="mt-14 scroll-mt-36">
       <p className="font-display text-sm font-bold uppercase tracking-widest text-tomato">
         Eat smart · Feel great
       </p>
@@ -267,18 +288,18 @@ export default function MealNutritionSection({
       </p>
 
       <div className="mt-8 space-y-8">
-        {meals.map((m) => (
+        {shown.map((m) => (
           <MealBlock key={m._id} meal={m} />
         ))}
       </div>
 
-      {showMenuLink && (
+      {showMenuLink && hasMore && (
         <div className="mt-6 text-center">
           <Link
             href="/menu#meal-nutrition"
             className="focus-ring inline-block rounded-full bg-forest px-6 py-2.5 font-display text-sm font-bold text-cream transition hover:bg-tomato"
           >
-            See full Meal Nutrition menu →
+            See all {meals.length} combos on Menu →
           </Link>
         </div>
       )}
