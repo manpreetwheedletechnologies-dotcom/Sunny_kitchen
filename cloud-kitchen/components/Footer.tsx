@@ -125,6 +125,33 @@ export default function Footer() {
           Kitchen Admin
         </a>
       </div>
+
+      {/* Developer credit — highlighted */}
+      <div className="border-t border-sun/40 bg-gradient-to-r from-sun/15 via-sun/35 to-sun/15 px-5 py-4 md:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-center gap-2 text-center sm:flex-row sm:gap-3">
+          <span className="font-display text-sm font-semibold text-forest/80">
+            <span aria-hidden className="mr-1">✨</span>
+            Website designed &amp; developed with
+            <span aria-hidden className="mx-1 text-tomato">♥</span>
+            by
+          </span>
+          <a
+            href="https://wheedletechnologies.ai/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="focus-ring group inline-flex items-center gap-2 rounded-full border-2 border-sun bg-white px-5 py-1.5 font-display text-sm font-extrabold uppercase tracking-wide text-forest shadow-[0_4px_14px_rgba(246,185,59,0.55)] transition duration-200 hover:-translate-y-0.5 hover:border-forest hover:bg-forest hover:text-sun hover:shadow-lg"
+          >
+            <span aria-hidden className="text-base">🚀</span>
+            Wheedle Technologies
+            <span
+              aria-hidden
+              className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            >
+              ↗
+            </span>
+          </a>
+        </div>
+      </div>
     </footer>
   );
 }

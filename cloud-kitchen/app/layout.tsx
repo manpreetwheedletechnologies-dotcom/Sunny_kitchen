@@ -13,11 +13,38 @@ import "@fontsource/quicksand/700.css";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
 import { CartProvider } from "@/lib/cart-context";
+import {
+  LOCAL_BUSINESS_JSON_LD,
+  SEO_DESCRIPTION,
+  SEO_KEYWORDS,
+  SEO_TITLE,
+  SITE_NAME,
+  SITE_URL,
+} from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Sunny's Kitchen - Homemade Goodness, Just for You!",
-  description:
-    "Sunny's Kitchen is a home-style cloud kitchen serving fresh, hygienic, made-with-love sandwiches, pasta, and tiffin meals — exclusive on Zomato.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SEO_TITLE, template: `%s | ${SITE_NAME}` },
+  description: SEO_DESCRIPTION,
+  keywords: SEO_KEYWORDS,
+  applicationName: SITE_NAME,
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_IN",
+    url: "/",
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
+    images: [{ url: `${SITE_URL}/hero_1.jpeg`, alt: "Fresh homemade food from Sunny's Kitchen, Indore" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SEO_TITLE,
+    description: SEO_DESCRIPTION,
+    images: [`${SITE_URL}/hero_1.jpeg`],
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -28,6 +55,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Structured data: local business (Google Search / Maps) */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(LOCAL_BUSINESS_JSON_LD) }}
+        />
         {/* Google Tag Manager */}
         <Script id="gtm-script" strategy="afterInteractive">
           {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':

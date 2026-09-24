@@ -1,11 +1,52 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsBoolean,
+  IsIn,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from "class-validator";
+import { Type } from "class-transformer";
+import { NUTRITION_LEVELS } from "../schemas/product.schema";
+
+export class NutritionItemDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(80)
+  foodItem: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  emoji?: string;
+
+  @IsIn(NUTRITION_LEVELS)
+  protein: string;
+
+  @IsIn(NUTRITION_LEVELS)
+  carbs: string;
+
+  @IsIn(NUTRITION_LEVELS)
+  healthyFats: string;
+
+  @IsIn(NUTRITION_LEVELS)
+  fiber: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  vitamins?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  benefit?: string;
+}
 
 export class CreateProductDto {
   @IsString()
@@ -48,4 +89,15 @@ export class CreateProductDto {
   @IsOptional()
   @IsString()
   ingredients?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isNutritionMeal?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @ValidateNested({ each: true })
+  @Type(() => NutritionItemDto)
+  nutrition?: NutritionItemDto[];
 }

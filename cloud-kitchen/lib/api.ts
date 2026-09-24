@@ -19,6 +19,20 @@ export function resolveImageUrl(imageUrl?: string | null): string | null {
   return imageUrl;
 }
 
+export type NutritionLevel = "None" | "Very low" | "Low" | "Moderate" | "High";
+
+/** One food inside a "Meal Nutrition" combo (one row of the nutrition sheet). */
+export type NutritionItem = {
+  foodItem: string;
+  emoji: string;
+  protein: NutritionLevel;
+  carbs: NutritionLevel;
+  healthyFats: NutritionLevel;
+  fiber: NutritionLevel;
+  vitamins: string;
+  benefit: string;
+};
+
 export type Product = {
   _id: string;
   name: string;
@@ -31,6 +45,9 @@ export type Product = {
   category: string;
   sortOrder: number;
   ingredients: string;
+  /** true => shown only in the separate "Meal Nutrition" section. */
+  isNutritionMeal?: boolean;
+  nutrition?: NutritionItem[];
 };
 
 export type OrderLine = {

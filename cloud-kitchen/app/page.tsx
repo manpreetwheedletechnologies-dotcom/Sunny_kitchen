@@ -9,6 +9,7 @@ import SignatureCollection from "@/components/SignatureCollection";
 import SpecialFeatures from "@/components/SpecialFeatures";
 import SignatureDish from "@/components/SignatureDish";
 import Testimonials from "@/components/Testimonials";
+import MealNutritionSection from "@/components/MealNutritionSection";
 import { badges } from "@/lib/menu";
 import { getProducts, type Product } from "@/lib/api";
 import { Sparkles, Star, Heart, Clock, ChefHat, Award, ArrowRight } from "lucide-react";
@@ -24,8 +25,9 @@ export default async function Home() {
     loadError = true;
   }
 
-  const menuItems = products.filter((p) => !p.isCombo);
-  const combo = products.find((p) => p.isCombo);
+  const nutritionMeals = products.filter((p) => p.isNutritionMeal);
+  const menuItems = products.filter((p) => !p.isCombo && !p.isNutritionMeal);
+  const combo = products.find((p) => p.isCombo && !p.isNutritionMeal);
 
 
 
@@ -158,6 +160,11 @@ export default async function Home() {
 
       <OurStory />
       <SignatureCollection products={products} />
+      {nutritionMeals.length > 0 && (
+        <div className="mx-auto max-w-4xl px-5 pb-6 md:px-8">
+          <MealNutritionSection meals={nutritionMeals} showMenuLink />
+        </div>
+      )}
       <SpecialFeatures />
       <SignatureDish />
       <Testimonials />

@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export default function SignatureCollection({ products }: { products: Product[] }) {
   // Take up to 5 non-combo products as signature items
-  const signatureItems = products.filter(p => !p.isCombo).slice(0, 5);
+  const signatureItems = products.filter(p => !p.isCombo && !p.isNutritionMeal).slice(0, 5);
   
   if (signatureItems.length === 0) return null;
 

@@ -12,7 +12,9 @@ import {
   resolveImageUrl,
   ApiError,
   type Product,
+  type NutritionItem,
 } from "@/lib/api";
+import NutritionEditor, { ItemTypePicker, type MealKind } from "@/components/NutritionEditor";
 
 const CATEGORIES = ["Uncategorized", "Starters", "Main Course", "Breads", "Desserts", "Beverages"];
 
@@ -26,18 +28,20 @@ export default function AdminMenuPage() {
     name: string;
     price: string;
     stockCount: string;
-    isCombo: boolean;
+    kind: MealKind;
     category: string;
     imageFile: File | null;
     ingredients: string;
+    nutrition: NutritionItem[];
   }>({
     name: "",
     price: "",
     stockCount: "20",
-    isCombo: false,
+    kind: "regular",
     category: "Uncategorized",
     imageFile: null,
     ingredients: "",
+    nutrition: [],
   });
   const [creating, setCreating] = useState(false);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -47,21 +51,24 @@ export default function AdminMenuPage() {
     name: string;
     price: string;
     stockCount: string;
-    isCombo: boolean;
+    kind: MealKind;
     category: string;
     ingredients: string;
     outOfStock: boolean;
     imageFile: File | null;
+    nutrition: NutritionItem[];
   }>({
     name: "",
     price: "",
     stockCount: "20",
-    isCombo: false,
+    kind: "regular",
     category: "Uncategorized",
     ingredients: "",
     outOfStock: false,
     imageFile: null,
+    nutrition: [],
   });
+  const [filter, setFilter] = useState<"all" | MealKind>("all");
   const [updating, setUpdating] = useState(false);
 
   const [syncing, setSyncing] = useState(false);
@@ -237,20 +244,44 @@ export default function AdminMenuPage() {
     }
   }
 
+  /** Turns the "item type" choice + nutrition rows into the API fields. */
+  function kindFields(kind: MealKind, nutrition: NutritionItem[], ingredients: string) {
+    const foods = nutrition.filter((f) => f.foodItem.trim());
+    const isNutrition = kind === "nutrition";
+    return {
+      isCombo: kind !== "regular",
+      isNutritionMeal: isNutrition,
+      nutrition: isNutrition
+        ? foods.map((f) => ({ ...f, foodItem: f.foodItem.trim() }))
+        : [],
+      // Keep the plain ingredients text (used by Swiggy/Zomato sync) filled in.
+      ingredients:
+        isNutrition && !ingredients.trim()
+          ? foods.map((f) => f.foodItem.trim()).join(", ")
+          : ingredients,
+    };
+  }
+
   async function handleCreateProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (
+      newProduct.kind === "nutrition" &&
+      !newProduct.nutrition.some((f) => f.foodItem.trim())
+    ) {
+      setError("Meal Nutrition item me kam se kam 1 food add karo.");
+      return;
+    }
     setCreating(true);
     setError(null);
     try {
       const created = await adminCreateProduct(token, {
         name: newProduct.name,
         price: Number(newProduct.price),
-        emoji: "🍽️",
+        emoji: newProduct.kind === "nutrition" ? "🥗" : "🍽️",
         stockCount: Number(newProduct.stockCount),
-        isCombo: newProduct.isCombo,
         category: newProduct.category,
-        ingredients: newProduct.ingredients,
+        ...kindFields(newProduct.kind, newProduct.nutrition, newProduct.ingredients),
       });
 
       let finalProduct = created;
@@ -259,7 +290,7 @@ export default function AdminMenuPage() {
       }
 
       setProducts((prev) => [...prev, finalProduct]);
-      setNewProduct({ name: "", price: "", stockCount: "20", isCombo: false, category: "Uncategorized", imageFile: null, ingredients: "" });
+      setNewProduct({ name: "", price: "", stockCount: "20", kind: "regular", category: "Uncategorized", imageFile: null, ingredients: "", nutrition: [] });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't add product");
     } finally {
@@ -273,17 +304,25 @@ export default function AdminMenuPage() {
       name: product.name,
       price: String(product.price),
       stockCount: String(product.stockCount),
-      isCombo: !!product.isCombo,
+      kind: product.isNutritionMeal ? "nutrition" : product.isCombo ? "combo" : "regular",
       category: product.category || "Uncategorized",
       ingredients: product.ingredients || "",
       outOfStock: !!product.outOfStock,
       imageFile: null,
+      nutrition: (product.nutrition ?? []).map((f) => ({ ...f })),
     });
   };
 
   async function handleUpdateProduct(e: React.FormEvent) {
     e.preventDefault();
     if (!token || !editingProduct) return;
+    if (
+      editForm.kind === "nutrition" &&
+      !editForm.nutrition.some((f) => f.foodItem.trim())
+    ) {
+      setError("Meal Nutrition item me kam se kam 1 food add karo.");
+      return;
+    }
     setUpdating(true);
     setError(null);
     try {
@@ -291,10 +330,9 @@ export default function AdminMenuPage() {
         name: editForm.name,
         price: Number(editForm.price),
         stockCount: Number(editForm.stockCount),
-        isCombo: editForm.isCombo,
         category: editForm.category,
-        ingredients: editForm.ingredients,
         outOfStock: editForm.outOfStock,
+        ...kindFields(editForm.kind, editForm.nutrition, editForm.ingredients),
       });
 
       let finalProduct = updated;
@@ -404,16 +442,21 @@ export default function AdminMenuPage() {
             className="focus-ring rounded-lg border-2 border-forest/15 bg-cream px-3 py-2 text-sm text-forest outline-none sm:col-span-2"
           />
         </div>
-        <div className="mt-4 flex items-center justify-between flex-wrap gap-4">
-          <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={newProduct.isCombo}
-              onChange={(e) => setNewProduct({ ...newProduct, isCombo: e.target.checked })}
-              className="accent-forest w-4 h-4 rounded"
+        <div className="mt-4">
+          <ItemTypePicker
+            value={newProduct.kind}
+            onChange={(kind) => setNewProduct({ ...newProduct, kind })}
+          />
+        </div>
+        {newProduct.kind === "nutrition" && (
+          <div className="mt-4">
+            <NutritionEditor
+              value={newProduct.nutrition}
+              onChange={(nutrition) => setNewProduct({ ...newProduct, nutrition })}
             />
-            Mark as Combo Deal
-          </label>
+          </div>
+        )}
+        <div className="mt-4 flex items-center justify-end flex-wrap gap-4">
           <button
             type="submit"
             disabled={creating}
@@ -423,6 +466,29 @@ export default function AdminMenuPage() {
           </button>
         </div>
       </form>
+
+      {/* Filter tabs */}
+      <div className="flex flex-wrap gap-2">
+        {([
+          ["all", "All"],
+          ["regular", "Regular"],
+          ["combo", "Combos"],
+          ["nutrition", "🥗 Meal Nutrition"],
+        ] as const).map(([k, label]) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setFilter(k)}
+            className={`focus-ring rounded-full px-4 py-1.5 font-display text-xs font-bold transition ${
+              filter === k
+                ? "bg-forest text-cream"
+                : "border border-forest/20 text-forest hover:bg-forest/5"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {loading ? (
         <p className="font-display text-sm text-forest/60">Loading menu...</p>
@@ -442,7 +508,10 @@ export default function AdminMenuPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((p) => (
+              {products.filter((p) => {
+                const kind: MealKind = p.isNutritionMeal ? "nutrition" : p.isCombo ? "combo" : "regular";
+                return filter === "all" || filter === kind;
+              }).map((p) => (
                 <tr
                   key={p._id}
                   className="border-b border-forest/10 transition last:border-none hover:bg-creamDark/30"
@@ -478,9 +547,14 @@ export default function AdminMenuPage() {
                   <td className="px-4 py-3">
                     <div className="font-semibold text-forest text-base">{p.name}</div>
                     <div className="flex gap-1.5 mt-1 items-center flex-wrap">
-                      {p.isCombo && (
+                      {p.isCombo && !p.isNutritionMeal && (
                         <span className="rounded-full bg-sun px-2 py-0.5 text-[10px] font-bold text-forest uppercase tracking-wide">
                           combo
+                        </span>
+                      )}
+                      {p.isNutritionMeal && (
+                        <span className="rounded-full bg-forest px-2 py-0.5 text-[10px] font-bold text-cream uppercase tracking-wide">
+                          🥗 meal nutrition · {p.nutrition?.length ?? 0} foods
                         </span>
                       )}
                       <span className="rounded-full bg-forest/10 px-2 py-0.5 text-[9px] font-bold text-forest uppercase tracking-wide border border-forest/10">
@@ -612,7 +686,7 @@ export default function AdminMenuPage() {
       {/* Edit Product Modal */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg border-2 border-forest/15 bg-card rounded-3xl p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200">
+          <div className={`w-full ${editForm.kind === "nutrition" ? "max-w-3xl" : "max-w-lg"} max-h-[92vh] overflow-y-auto border-2 border-forest/15 bg-card rounded-3xl p-6 md:p-8 shadow-2xl relative animate-in zoom-in-95 duration-200`}>
             <button
               onClick={() => setEditingProduct(null)}
               className="absolute top-4 right-4 text-forest/40 hover:text-forest text-xl font-bold p-2"
@@ -713,17 +787,18 @@ export default function AdminMenuPage() {
                 />
               </div>
 
-              <div className="flex gap-6 items-center pt-2">
-                <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={editForm.isCombo}
-                    onChange={(e) => setEditForm({ ...editForm, isCombo: e.target.checked })}
-                    className="accent-forest w-4 h-4 rounded"
-                  />
-                  Mark as Combo Deal
-                </label>
+              <ItemTypePicker
+                value={editForm.kind}
+                onChange={(kind) => setEditForm({ ...editForm, kind })}
+              />
+              {editForm.kind === "nutrition" && (
+                <NutritionEditor
+                  value={editForm.nutrition}
+                  onChange={(nutrition) => setEditForm({ ...editForm, nutrition })}
+                />
+              )}
 
+              <div className="flex gap-6 items-center pt-2">
                 <label className="flex items-center gap-2 text-sm text-forest/70 cursor-pointer">
                   <input
                     type="checkbox"

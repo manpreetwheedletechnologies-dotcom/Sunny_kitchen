@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { badges } from "@/lib/menu";
 import Image from "next/image";
 import hero1 from "../../public/hero_1.jpeg";
@@ -10,6 +11,13 @@ const facts = [
   { label: "Avg. delivery time", value: "35 min" },
   { label: "Home cooks in the kitchen", value: "3" },
 ];
+
+export const metadata: Metadata = {
+  title: "About Us - Home-style Cloud Kitchen in Vijay Nagar, Indore",
+  description:
+    "Meet Sunny's Kitchen - a hygienic, home-style cloud kitchen in Vijay Nagar, Indore, cooking fresh sandwiches, pasta and tiffin meals with love every day.",
+  alternates: { canonical: "/about" },
+};
 
 export default function AboutPage() {
   return (

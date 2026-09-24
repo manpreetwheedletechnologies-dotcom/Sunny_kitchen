@@ -1,7 +1,16 @@
+import type { Metadata } from "next";
 import MenuCard from "@/components/MenuCard";
 import { getProducts, type Product } from "@/lib/api";
 import Testimonials from "@/components/Testimonials";
+import MealNutritionSection from "@/components/MealNutritionSection";
 
+
+export const metadata: Metadata = {
+  title: "Menu - Sandwiches, Pasta, Tiffin & Omelettes in Indore",
+  description:
+    "Explore Sunny's Kitchen menu: fresh homemade sandwiches, creamy pasta, masala omelettes, tiffin meals and healthy Meal Nutrition bowls. Order online in Indore.",
+  alternates: { canonical: "/menu" },
+};
 
 export default async function MenuPage() {
   let products: Product[] = [];
@@ -13,8 +22,11 @@ export default async function MenuPage() {
     loadError = true;
   }
 
-  const menuItems = products.filter((p) => !p.isCombo);
-  const combos = products.filter((p) => p.isCombo);
+  // Meal Nutrition meals live in their own section — keep them out of the
+  // normal menu grid and the combo deals.
+  const nutritionMeals = products.filter((p) => p.isNutritionMeal);
+  const menuItems = products.filter((p) => !p.isCombo && !p.isNutritionMeal);
+  const combos = products.filter((p) => p.isCombo && !p.isNutritionMeal);
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-14 md:px-8 md:py-20">
@@ -63,6 +75,9 @@ export default async function MenuPage() {
               <MenuCard key={item._id} item={item} />
             ))}
           </div>
+
+          {/* Meal Nutrition — separate section */}
+          <MealNutritionSection meals={nutritionMeals} />
         </>
       )}
       {/* Testimonials */}
