@@ -162,7 +162,7 @@ export default async function Home() {
       <SignatureCollection products={products} />
       {nutritionMeals.length > 0 && (
         <div className="mx-auto max-w-4xl px-5 pb-6 md:px-8">
-          <MealNutritionSection meals={nutritionMeals} showMenuLink />
+          <MealNutritionSection meals={nutritionMeals} limit={1} showMenuLink />
         </div>
       )}
       <SpecialFeatures />
