@@ -112,7 +112,7 @@ export default async function Home() {
               FRESH &nbsp;•&nbsp; HYGIENIC &nbsp;•&nbsp; TASTY
             </p>
             <p className="mt-0.5 font-body text-xs text-cream/80 md:text-sm">
-              Made with love, delivered with care.
+              Made with  love, delivered with care.
             </p>
           </div>
 
