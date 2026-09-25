@@ -112,7 +112,7 @@ export default async function Home() {
               FRESH &nbsp;•&nbsp; HYGIENIC &nbsp;•&nbsp; TASTY
             </p>
             <p className="mt-0.5 font-body text-xs text-cream/80 md:text-sm">
-              Made with  love, delivered with care.
+              Made with love, delivered with care.
             </p>
           </div>
 
@@ -162,7 +162,7 @@ export default async function Home() {
       <SignatureCollection products={products} />
       {nutritionMeals.length > 0 && (
         <div className="mx-auto max-w-4xl px-5 pb-6 md:px-8">
-          <MealNutritionSection meals={nutritionMeals} limit={1} showMenuLink />
+          <MealNutritionSection meals={nutritionMeals} showMenuLink />
         </div>
       )}
       <SpecialFeatures />
