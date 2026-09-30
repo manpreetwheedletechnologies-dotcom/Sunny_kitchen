@@ -167,11 +167,7 @@ export default async function Home() {
       )}
       <SpecialFeatures />
       <SignatureDish />
-      <Testimonials />
-
-
-
- 
+      <Testimonials /> 
     </main>
   );
 }
