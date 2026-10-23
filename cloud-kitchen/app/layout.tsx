@@ -85,7 +85,7 @@ export default function RootLayout({
         {/* End Google tag (gtag.js) */}
 
 
-        {/* <!-- Meta Pixel Code --> */}
+        {/* <!-- Meta Pixel Code (two pixels: 1076290661990053 and 1586290979445564) --> */}
         <script>
           {`
           !function(f,b,e,v,n,t,s)
@@ -97,6 +97,7 @@ export default function RootLayout({
 s.parentNode.insertBefore(t,s)}(window, document,'script',
           'https://connect.facebook.net/en_US/fbevents.js');
           fbq('init', '1076290661990053');
+          fbq('init', '1586290979445564');
           fbq('track', 'PageView');
          `}
         </script>
@@ -106,6 +107,9 @@ s.parentNode.insertBefore(t,s)}(window, document,'script',
       <body className="font-body bg-cream text-ink antialiased">
         <noscript><img height="1" width="1" style={{ display: "none" }}
           src="https://www.facebook.com/tr?id=1076290661990053&ev=PageView&noscript=1"
+        /></noscript>
+        <noscript><img height="1" width="1" style={{ display: "none" }}
+          src="https://www.facebook.com/tr?id=1586290979445564&ev=PageView&noscript=1"
         /></noscript>
         {/* Google Tag Manager (noscript) */}
         <noscript>
